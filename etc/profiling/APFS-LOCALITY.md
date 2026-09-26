@@ -65,3 +65,27 @@ Three runs per strategy at fixed 8 workers on this machine's `~/github` tree, af
 The selector retained **adaptive**. Relative to directory-local, inode ordering reduced median process-attributed reads by about 18% and median wall time by about 9%, with slightly higher CPU. This supports further examination of locality, but the new candidates did not beat the existing implementation overall. The ranges show substantial temporal variability; three runs are evidence for this reference workload, not a filesystem-wide performance guarantee. Full observations, counter windows and executable SHA-256 are in [artifacts/apfs-locality-8.json](artifacts/apfs-locality-8.json).
 
 Validation after integration: 334 workspace tests passed with all features, strict workspace/all-target/all-feature Clippy passed, the five `make check` configurations and journey tests passed, and the selector's three tests passed. Core candidate checks also compiled for Linux musl and Windows MSVC in the implementation worktree. Tests cover metadata parity, sparse files, hard links, symlinks, non-ASCII names, permissions/errors, pre-epoch timestamps, directory-descriptor lifetime after rename, pruning and parent IDs, bounded buffering/jobs, cancellation, and clone/resource-fork parity. Production defaults remain unchanged.
+
+## Full-order flat-directory diagnostic
+
+The 4,096-entry window may not group enough nearby inode records in a very wide directory. A separate `inode_locality_probe` example therefore pre-enumerates the same one directory, optionally sorts the entire vector by inode, then partitions it into balanced contiguous worker slices. Both modes use identical descriptor-relative stats and checksumming, with no work-stealing scheduler or recursive traversal. It caps enumeration at one million records and refuses paths outside `~/github`.
+
+Eight serial runs covered two orders at 1 and 8 workers, with two observations each in forward/reverse sequence. Each visited the same 209,190 entries in `~/github/codex/codex-rs/target/debug/deps`, with matching logical bytes, allocated bytes and both order-independent metadata checksums, and zero errors. Enumeration had 104,548 adjacent decreases in inode number before sorting, so it was not already inode-ordered.
+
+| Workers / order | Median stat seconds | Median overall seconds | Median total CPU seconds | Median stat-phase physical reads, MiB |
+| --- | ---: | ---: | ---: | ---: |
+| 1 / enumeration | 6.269 | 6.784 | 2.566 | 224.3 |
+| 1 / full inode sort | 3.962 | 4.717 | 2.342 | 122.6 |
+| 8 / enumeration | 1.140 | 1.311 | 5.107 | 179.9 |
+| 8 / full inode sort | 1.112 | 1.513 | 5.111 | 134.1 |
+
+At one worker, full inode ordering reduced median stat-phase read bytes by 45% and stat time by 37%; overall time including enumeration and sorting improved by 30%. At eight workers, reads decreased by 25%, but stat time was similar and overall time was higher. Sorting itself took only about 4 ms. The higher overall 8-worker times mostly reflect differing enumeration latency, so they must not be attributed to sorting CPU overhead. Each phase is recorded separately in [artifacts/inode-full-order.json](artifacts/inode-full-order.json).
+
+This gives more direct evidence that metadata access order affects I/O on this APFS workload. It still does not reveal unique block addresses or prove a specific page-reread multiplier. The full-sort diagnostic is not the production `inode-ordered` candidate, which remains bounded to 4,096 entries. It also pre-enumerates before stat work, requires memory for all immediate children and does not reconstruct an entire filesystem catalog. The next promising production experiment would preserve bulk handling for small directories and apply larger ordered metadata batches selectively to wide directories, with an explicit memory budget and fixed-concurrency controls.
+
+```sh
+cargo build --release -p dua-core --example inode_locality_probe
+target/release/examples/inode_locality_probe ~/github/codex/codex-rs/target/debug/deps 1 enumeration
+target/release/examples/inode_locality_probe ~/github/codex/codex-rs/target/debug/deps 1 inode
+# Repeat with 8 workers and reverse the order; compare checksums before timings.
+```
