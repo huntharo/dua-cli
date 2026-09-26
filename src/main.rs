@@ -656,6 +656,8 @@ fn traversal_options_on_command_line(matches: &clap::ArgMatches) -> bool {
     .any(|id| matches.value_source(id) == Some(clap::parser::ValueSource::CommandLine));
     #[cfg(target_os = "macos")]
     let used = used
+        || matches.value_source("metadata_strategy")
+            == Some(clap::parser::ValueSource::CommandLine)
         || matches.value_source("deduplicate_apfs_clones")
             == Some(clap::parser::ValueSource::CommandLine);
     used
@@ -699,6 +701,8 @@ fn merge_scan_args(
         thread_loss_percent: global
             .thread_loss_percent
             .or(subcommand.thread_loss_percent),
+        #[cfg(target_os = "macos")]
+        metadata_strategy: global.metadata_strategy.or(subcommand.metadata_strategy),
         apparent_size: global.apparent_size || subcommand.apparent_size,
         count_hard_links: global.count_hard_links || subcommand.count_hard_links,
         #[cfg(target_os = "macos")]
@@ -753,6 +757,11 @@ fn walk_options_from(traversal: &options::ScanArgs) -> Result<dua::WalkOptions> 
             skip_metadata: false,
             #[cfg(target_os = "macos")]
             apfs_clone_metadata: traversal.deduplicate_apfs_clones && !traversal.apparent_size,
+            #[cfg(target_os = "macos")]
+            macos_metadata_strategy: traversal
+                .metadata_strategy
+                .map(Into::into)
+                .unwrap_or_default(),
         },
     };
 
@@ -1024,6 +1033,8 @@ mod tests {
             thread_baseline_ms: None,
             thread_adjustment_ms: None,
             thread_loss_percent: None,
+            #[cfg(target_os = "macos")]
+            metadata_strategy: None,
             apparent_size: false,
             count_hard_links: false,
             #[cfg(target_os = "macos")]
@@ -1304,6 +1315,57 @@ mod tests {
         assert_eq!(path.extension().and_then(|ext| ext.to_str()), Some("svg"));
         assert!(fs::read_to_string(&path).unwrap().contains("<svg"));
         fs::remove_file(path).expect("remove retained temporary flame graph");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn metadata_strategy_merges_and_reaches_walk_options() {
+        use super::options::MetadataStrategy;
+        let mut global = scan_args();
+        let mut subcommand = scan_args();
+        subcommand.metadata_strategy = Some(MetadataStrategy::InodeOrdered);
+        let merged = super::merge_scan_args(&global, &subcommand);
+        assert!(matches!(
+            super::walk_options_from(&merged)
+                .unwrap()
+                .metadata_options
+                .macos_metadata_strategy,
+            dua_core::MacosMetadataStrategy::InodeOrdered
+        ));
+        global.metadata_strategy = Some(MetadataStrategy::Bulk);
+        let merged = super::merge_scan_args(&global, &subcommand);
+        assert!(matches!(
+            super::walk_options_from(&merged)
+                .unwrap()
+                .metadata_options
+                .macos_metadata_strategy,
+            dua_core::MacosMetadataStrategy::Bulk
+        ));
+        let matches = super::options::Args::command()
+            .try_get_matches_from([
+                "dua",
+                "--metadata-strategy",
+                "bulk",
+                "diff",
+                "old.dua",
+                "new.dua",
+            ])
+            .unwrap();
+        assert!(traversal_options_on_command_line(&matches));
+        for command in ["aggregate", "stack"] {
+            assert!(
+                super::options::Args::command()
+                    .try_get_matches_from([
+                        "dua",
+                        command,
+                        "--metadata-strategy",
+                        "bulk",
+                        "--import",
+                        "scan.dua"
+                    ])
+                    .is_err()
+            );
+        }
     }
 
     #[cfg(target_os = "macos")]
