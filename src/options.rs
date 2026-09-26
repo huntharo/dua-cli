@@ -110,17 +110,13 @@ pub struct TraversalArgs {
 }
 
 #[derive(Debug, Clone, clap::Args)]
-#[cfg_attr(
-    target_os = "macos",
-    expect(
-        clippy::struct_excessive_bools,
-        reason = "independent command-line switches map directly to booleans"
-    )
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent command-line switches map directly to booleans"
 )]
 pub struct ScanArgs {
-    /// Use a fixed number of worker threads instead of adaptive tuning.
-    /// Set to 0 for the number of logical processors, or 1 for a single worker.
-    /// When omitted, start with one active worker and tune parallelism automatically.
+    /// Initial worker count; remove one worker per accepted throughput probe.
+    /// Omitted or 0 uses available logical processors. Use --fixed-threads to disable tuning.
     #[clap(
         short = 't',
         long = "threads",
@@ -129,7 +125,12 @@ pub struct ScanArgs {
     )]
     pub threads: Option<usize>,
 
-    /// Maximum adaptive worker count [default: available logical processors].
+    /// Disable adaptive tuning and keep --threads (or its default) fixed.
+    /// Adaptive caps, intervals, and loss threshold are ignored in this mode.
+    #[clap(long, env = "DUA_FIXED_THREADS", help_heading = "Traversal Options")]
+    pub fixed_threads: bool,
+
+    /// Cap the initial adaptive count [default: no additional cap; at least 1].
     #[clap(
         long,
         env = "DUA_MAX_THREADS",
@@ -138,33 +139,35 @@ pub struct ScanArgs {
     )]
     pub max_threads: Option<usize>,
 
-    /// Seconds to measure the initial single-worker throughput [default: 10].
+    /// Milliseconds to measure aggregate throughput at the initial count [default: 250].
     #[clap(
         long,
-        env = "DUA_THREAD_BASELINE_SECONDS",
+        env = "DUA_THREAD_BASELINE_MS",
         value_parser = clap::value_parser!(u64).range(1..),
         help_heading = "Traversal Options"
     )]
-    pub thread_baseline_seconds: Option<u64>,
+    pub thread_baseline_ms: Option<u64>,
 
-    /// Seconds between adaptive worker-count evaluations [default: 10].
+    /// Milliseconds to measure each candidate after retiring workers finish [default: 250].
     #[clap(
         long,
-        env = "DUA_THREAD_ADJUSTMENT_SECONDS",
+        env = "DUA_THREAD_ADJUSTMENT_MS",
         value_parser = clap::value_parser!(u64).range(1..),
         help_heading = "Traversal Options"
     )]
-    pub thread_adjustment_seconds: Option<u64>,
+    pub thread_adjustment_ms: Option<u64>,
 
-    /// Required gain per added worker, as a percentage of initial throughput [default: 60].
+    /// Accept n-1 only if loss < PERCENT/100 * `T_n/n` [default: 20].
+    /// `T_n` is aggregate entries/second at accepted count n. Equality rejects; first rejection
+    /// restores n and stops tuning. Each accepted candidate supplies the next reference rate.
     #[clap(
         long,
-        env = "DUA_THREAD_EFFICIENCY",
+        env = "DUA_THREAD_LOSS_PERCENT",
         value_name = "PERCENT",
         value_parser = parse_percentage,
         help_heading = "Traversal Options"
     )]
-    pub thread_efficiency: Option<f64>,
+    pub thread_loss_percent: Option<f64>,
 
     /// Display apparent size instead of disk usage.
     #[clap(
@@ -245,10 +248,11 @@ pub struct StackArgs {
         conflicts_with_all = [
             "input",
             "threads",
+            "fixed_threads",
             "max_threads",
-            "thread_baseline_seconds",
-            "thread_adjustment_seconds",
-            "thread_efficiency",
+            "thread_baseline_ms",
+            "thread_adjustment_ms",
+            "thread_loss_percent",
             "apparent_size",
             "count_hard_links",
             "stay_on_filesystem",
@@ -308,10 +312,11 @@ pub enum Command {
             conflicts_with_all = [
                 "input",
                 "threads",
+                "fixed_threads",
                 "max_threads",
-                "thread_baseline_seconds",
-                "thread_adjustment_seconds",
-                "thread_efficiency",
+                "thread_baseline_ms",
+                "thread_adjustment_ms",
+                "thread_loss_percent",
                 "apparent_size",
                 "count_hard_links",
                 "stay_on_filesystem",
@@ -405,10 +410,11 @@ pub enum Command {
             conflicts_with_all = [
                 "input",
                 "threads",
+                "fixed_threads",
                 "max_threads",
-                "thread_baseline_seconds",
-                "thread_adjustment_seconds",
-                "thread_efficiency",
+                "thread_baseline_ms",
+                "thread_adjustment_ms",
+                "thread_loss_percent",
                 "apparent_size",
                 "count_hard_links",
                 "stay_on_filesystem",
@@ -487,16 +493,16 @@ mod tests {
     fn adaptive_options_validate_ranges() {
         for (flag, invalid) in [
             ("--max-threads", "0"),
-            ("--thread-baseline-seconds", "0"),
-            ("--thread-adjustment-seconds", "0"),
-            ("--thread-efficiency", "101"),
-            ("--thread-efficiency", "NaN"),
-            ("--thread-efficiency", "inf"),
+            ("--thread-baseline-ms", "0"),
+            ("--thread-adjustment-ms", "0"),
+            ("--thread-loss-percent", "101"),
+            ("--thread-loss-percent", "NaN"),
+            ("--thread-loss-percent", "inf"),
         ] {
             assert!(Args::try_parse_from(["dua", flag, invalid]).is_err());
         }
         for percentage in ["0", "60", "100"] {
-            Args::try_parse_from(["dua", "--thread-efficiency", percentage])
+            Args::try_parse_from(["dua", "--thread-loss-percent", percentage])
                 .expect("inclusive percentage bounds");
         }
     }
@@ -504,11 +510,15 @@ mod tests {
     #[test]
     fn snapshot_import_rejects_adaptive_tuning() {
         for command in ["aggregate", "stacks", "flamegraph"] {
+            assert!(
+                Args::try_parse_from(["dua", command, "--import", "scan.dua", "--fixed-threads"])
+                    .is_err()
+            );
             for flag in [
                 "--max-threads",
-                "--thread-baseline-seconds",
-                "--thread-adjustment-seconds",
-                "--thread-efficiency",
+                "--thread-baseline-ms",
+                "--thread-adjustment-ms",
+                "--thread-loss-percent",
             ] {
                 let error =
                     Args::try_parse_from(["dua", command, "--import", "scan.dua", flag, "2"])

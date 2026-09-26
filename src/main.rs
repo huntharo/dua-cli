@@ -640,10 +640,11 @@ fn is_default_ignore_dirs(list: &[PathBuf]) -> bool {
 fn traversal_options_on_command_line(matches: &clap::ArgMatches) -> bool {
     let used = [
         "threads",
+        "fixed_threads",
         "max_threads",
-        "thread_baseline_seconds",
-        "thread_adjustment_seconds",
-        "thread_efficiency",
+        "thread_baseline_ms",
+        "thread_adjustment_ms",
+        "thread_loss_percent",
         "apparent_size",
         "count_hard_links",
         "stay_on_filesystem",
@@ -689,14 +690,15 @@ fn merge_scan_args(
 ) -> options::ScanArgs {
     options::ScanArgs {
         threads: global.threads.or(subcommand.threads),
+        fixed_threads: global.fixed_threads || subcommand.fixed_threads,
         max_threads: global.max_threads.or(subcommand.max_threads),
-        thread_baseline_seconds: global
-            .thread_baseline_seconds
-            .or(subcommand.thread_baseline_seconds),
-        thread_adjustment_seconds: global
-            .thread_adjustment_seconds
-            .or(subcommand.thread_adjustment_seconds),
-        thread_efficiency: global.thread_efficiency.or(subcommand.thread_efficiency),
+        thread_baseline_ms: global.thread_baseline_ms.or(subcommand.thread_baseline_ms),
+        thread_adjustment_ms: global
+            .thread_adjustment_ms
+            .or(subcommand.thread_adjustment_ms),
+        thread_loss_percent: global
+            .thread_loss_percent
+            .or(subcommand.thread_loss_percent),
         apparent_size: global.apparent_size || subcommand.apparent_size,
         count_hard_links: global.count_hard_links || subcommand.count_hard_links,
         #[cfg(target_os = "macos")]
@@ -719,30 +721,28 @@ fn merge_scan_args(
 }
 
 fn walk_options_from(traversal: &options::ScanArgs) -> Result<dua::WalkOptions> {
-    let adaptive_threads = traversal.threads.is_none().then(|| {
+    let requested = traversal
+        .threads
+        .filter(|&n| n != 0)
+        .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, usize::from));
+    let adaptive_threads = (!traversal.fixed_threads).then(|| {
         let defaults = dua_core::AdaptiveThreads::default();
         dua_core::AdaptiveThreads {
             max_threads: traversal.max_threads.unwrap_or(defaults.max_threads),
             baseline_interval: traversal
-                .thread_baseline_seconds
-                .map_or(defaults.baseline_interval, std::time::Duration::from_secs),
-            adjustment_interval: traversal
-                .thread_adjustment_seconds
-                .map_or(defaults.adjustment_interval, std::time::Duration::from_secs),
-            efficiency_threshold: traversal
-                .thread_efficiency
-                .map_or(defaults.efficiency_threshold, |percentage| {
-                    percentage / 100.0
-                }),
+                .thread_baseline_ms
+                .map_or(defaults.baseline_interval, std::time::Duration::from_millis),
+            adjustment_interval: traversal.thread_adjustment_ms.map_or(
+                defaults.adjustment_interval,
+                std::time::Duration::from_millis,
+            ),
+            loss_threshold: traversal
+                .thread_loss_percent
+                .map_or(defaults.loss_threshold, |percentage| percentage / 100.0),
         }
     });
-    let mut walk_options = dua::WalkOptions {
-        threads: traversal.threads.unwrap_or_else(|| {
-            adaptive_threads
-                .as_ref()
-                .expect("adaptive mode is enabled")
-                .max_threads
-        }),
+    let walk_options = dua::WalkOptions {
+        threads: adaptive_threads.map_or(requested, |config| requested.min(config.max_threads)),
         apparent_size: traversal.apparent_size,
         count_hard_links: traversal.count_hard_links,
         cross_filesystems: !traversal.stay_on_filesystem,
@@ -755,10 +755,6 @@ fn walk_options_from(traversal: &options::ScanArgs) -> Result<dua::WalkOptions> 
             apfs_clone_metadata: traversal.deduplicate_apfs_clones && !traversal.apparent_size,
         },
     };
-
-    if walk_options.threads == 0 {
-        walk_options.threads = num_cpus::get();
-    }
 
     Ok(walk_options)
 }
@@ -1023,10 +1019,11 @@ mod tests {
     fn scan_args() -> super::options::ScanArgs {
         super::options::ScanArgs {
             threads: None,
+            fixed_threads: false,
             max_threads: None,
-            thread_baseline_seconds: None,
-            thread_adjustment_seconds: None,
-            thread_efficiency: None,
+            thread_baseline_ms: None,
+            thread_adjustment_ms: None,
+            thread_loss_percent: None,
             apparent_size: false,
             count_hard_links: false,
             #[cfg(target_os = "macos")]
@@ -1049,25 +1046,35 @@ mod tests {
     fn traversal_defaults_enable_adaptive_workers() {
         let options = super::walk_options_from(&scan_args()).unwrap();
         let adaptive = options.metadata_options.adaptive_threads.unwrap();
-        assert_eq!(options.threads, adaptive.max_threads);
-        assert!(adaptive.max_threads >= 1);
+        assert_eq!(
+            options.threads,
+            std::thread::available_parallelism().map_or(1, usize::from)
+        );
+        assert_eq!(adaptive.max_threads, usize::MAX);
         assert_eq!(
             adaptive.baseline_interval,
-            std::time::Duration::from_secs(10)
+            std::time::Duration::from_millis(250)
         );
         assert_eq!(
             adaptive.adjustment_interval,
-            std::time::Duration::from_secs(10)
+            std::time::Duration::from_millis(250)
         );
-        assert!((adaptive.efficiency_threshold - 0.60).abs() < f64::EPSILON);
+        assert!((adaptive.loss_threshold - 0.20).abs() < f64::EPSILON);
     }
 
     #[test]
-    fn explicit_thread_counts_disable_adaptation() {
-        for (requested, expected) in [(0, num_cpus::get()), (1, 1), (4, 4)] {
+    fn explicit_thread_counts_are_initial_and_caps_only_reduce_them() {
+        let processors = std::thread::available_parallelism().map_or(1, usize::from);
+        for (requested, expected) in [(0, processors), (1, 1), (16, 16)] {
             let mut traversal = scan_args();
             traversal.threads = Some(requested);
+            let options = super::walk_options_from(&traversal).unwrap();
+            assert_eq!(options.threads, expected);
+            assert!(options.metadata_options.adaptive_threads.is_some());
             traversal.max_threads = Some(2);
+            let options = super::walk_options_from(&traversal).unwrap();
+            assert_eq!(options.threads, expected.min(2));
+            traversal.fixed_threads = true;
             let options = super::walk_options_from(&traversal).unwrap();
             assert_eq!(options.threads, expected);
             assert!(options.metadata_options.adaptive_threads.is_none());
@@ -1077,27 +1084,32 @@ mod tests {
     #[test]
     fn adaptive_tuning_merges_before_defaults_are_applied() {
         let mut global = traversal_args();
-        global.scan.thread_baseline_seconds = Some(10);
-        global.scan.thread_efficiency = Some(60.0);
+        global.scan.threads = Some(16);
+        global.scan.thread_baseline_ms = Some(250);
+        global.scan.thread_loss_percent = Some(20.0);
         let mut subcommand = traversal_args();
         subcommand.scan.max_threads = Some(7);
-        subcommand.scan.thread_baseline_seconds = Some(3);
-        subcommand.scan.thread_adjustment_seconds = Some(4);
-        subcommand.scan.thread_efficiency = Some(80.0);
+        subcommand.scan.thread_baseline_ms = Some(30);
+        subcommand.scan.thread_adjustment_ms = Some(40);
+        subcommand.scan.thread_loss_percent = Some(80.0);
         let merged = merge_traversal_args(&global, &subcommand);
         let options = super::walk_options_from(&merged.scan).unwrap();
         let adaptive = options.metadata_options.adaptive_threads.unwrap();
         assert_eq!(options.threads, 7);
         assert_eq!(
             adaptive.baseline_interval,
-            std::time::Duration::from_secs(10)
+            std::time::Duration::from_millis(250)
         );
         assert_eq!(
             adaptive.adjustment_interval,
-            std::time::Duration::from_secs(4)
+            std::time::Duration::from_millis(40)
         );
-        assert!((adaptive.efficiency_threshold - 0.60).abs() < f64::EPSILON);
-
+        assert!((adaptive.loss_threshold - 0.20).abs() < f64::EPSILON);
+        subcommand.scan.fixed_threads = true;
+        let options =
+            super::walk_options_from(&merge_traversal_args(&global, &subcommand).scan).unwrap();
+        assert_eq!(options.threads, 16);
+        assert!(options.metadata_options.adaptive_threads.is_none());
         global.scan.threads = Some(0);
         subcommand.scan.threads = Some(2);
         assert_eq!(
@@ -1107,12 +1119,62 @@ mod tests {
     }
 
     #[test]
+    fn parsed_global_and_subcommand_worker_flags_resolve_consistently() {
+        use clap::Parser;
+        for (argv, initial, fixed) in [
+            (vec!["dua", "--threads", "16"], 16, false),
+            (vec!["dua", "aggregate", "--threads", "16"], 16, false),
+            (
+                vec!["dua", "--threads", "16", "aggregate", "--max-threads", "8"],
+                8,
+                false,
+            ),
+            (
+                vec!["dua", "--threads", "16", "aggregate", "--threads", "4"],
+                16,
+                false,
+            ),
+            (
+                vec!["dua", "--threads", "16", "aggregate", "--fixed-threads"],
+                16,
+                true,
+            ),
+            (
+                vec!["dua", "--fixed-threads", "aggregate", "--threads", "8"],
+                8,
+                true,
+            ),
+        ] {
+            let args = super::options::Args::try_parse_from(argv).unwrap();
+            let merged =
+                if let Some(super::options::Command::Aggregate { traversal, .. }) = args.command {
+                    merge_traversal_args(&args.traversal, &traversal)
+                } else {
+                    args.traversal
+                };
+            let options = super::walk_options_from(&merged.scan).unwrap();
+            assert_eq!(options.threads, initial);
+            assert_eq!(options.metadata_options.adaptive_threads.is_none(), fixed);
+        }
+    }
+
+    #[test]
     fn snapshot_import_detects_global_adaptive_tuning() {
+        let matches = super::options::Args::command()
+            .try_get_matches_from([
+                "dua",
+                "--fixed-threads",
+                "aggregate",
+                "--import",
+                "scan.dua",
+            ])
+            .unwrap();
+        assert!(traversal_options_on_command_line(&matches));
         for flag in [
             "--max-threads",
-            "--thread-baseline-seconds",
-            "--thread-adjustment-seconds",
-            "--thread-efficiency",
+            "--thread-baseline-ms",
+            "--thread-adjustment-ms",
+            "--thread-loss-percent",
         ] {
             let matches = super::options::Args::command()
                 .try_get_matches_from(["dua", flag, "2", "aggregate", "--import", "scan.dua"])

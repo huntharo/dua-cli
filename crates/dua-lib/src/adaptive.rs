@@ -1,39 +1,43 @@
 //! Throughput-based worker admission control.
 use std::time::Duration;
 
-/// Configuration for automatically adjusting the number of active filesystem workers.
+/// Configuration for reducing filesystem concurrency from the requested thread count.
 ///
-/// The pool starts with one active worker and measures entries delivered per second. It probes
-/// successively doubled worker counts, retaining an increase only when its marginal throughput
-/// per added worker reaches `efficiency_threshold` times the original single-worker throughput.
-/// Once growth stops, periodic probes alternate between fewer and more workers. Workload changes
-/// can therefore move the selected count in either direction. Probes temporarily use their target
-/// count for one adjustment interval. All worker threads are allocated upfront, up to `max_threads`.
+/// The walk constructor's `threads` argument supplies the initial count, capped by `max_threads`.
+/// At an accepted count `n` with aggregate throughput `T_n` (entries/second), probe `n - 1`.
+/// Keep the reduction only when `T_n - T_(n-1) < loss_threshold * T_n / n`, then use the
+/// accepted candidate's throughput as the next reference. Equality rejects the reduction.
+/// The first rejection restores `n` and holds it for the rest of the traversal. Never go below
+/// one. A restarted [`crate::Walk`] begins a new search; a streaming pool shares one search
+/// across all roots, including gaps between submissions.
 ///
-/// Rates include consumer backpressure and idle time. Changes in tree shape, cache state, or
-/// storage latency can therefore produce noisy decisions. Downshifts wait for in-flight jobs
-/// to finish; those jobs can also influence the next measurement. Short walks may finish before
-/// the baseline interval, and explicit fixed workers can be faster for a known workload.
+/// Each candidate window starts only after retired workers acknowledge a job boundary.
+/// Their in-flight work is excluded. Zero-entry baseline windows wait for work; zero-entry
+/// candidate windows conservatively restore the accepted count and stop searching.
+/// Rates still include consumer backpressure, idle time, and changes in directory shape,
+/// cache state, or storage latency. Short/noisy walks may not yield a useful choice, and this
+/// greedy search does not promise an optimal count. All initial workers are allocated upfront.
 #[derive(Clone, Copy, Debug)]
 pub struct AdaptiveThreads {
-    /// Maximum allocated worker count. Zero is normalized to one.
+    /// Cap on the constructor's initial thread count. Defaults to no additional cap.
+    /// Zero is normalized to one. No workers above the initial count are allocated.
     pub max_threads: usize,
-    /// Initial single-worker measurement interval. Zero is normalized to one millisecond.
+    /// Initial measurement duration. Defaults to 250 ms; zero becomes one millisecond.
     pub baseline_interval: Duration,
-    /// Duration of subsequent measurements and probes. Zero becomes one millisecond.
+    /// Candidate measurement duration, after retirement. Defaults to 250 ms; zero becomes 1 ms.
     pub adjustment_interval: Duration,
-    /// Required marginal gain per added worker, relative to the initial single-worker rate.
-    /// Values outside `0.0..=1.0`, including NaN, use the default of `0.60`.
-    pub efficiency_threshold: f64,
+    /// Allowed fraction of projected loss `T_n / n`. Defaults to `0.20` (20%).
+    /// Values outside `0.0..=1.0`, including NaN, use the default. Acceptance is strictly less.
+    pub loss_threshold: f64,
 }
 
 impl Default for AdaptiveThreads {
     fn default() -> Self {
         Self {
-            max_threads: std::thread::available_parallelism().map_or(1, usize::from),
-            baseline_interval: Duration::from_secs(10),
-            adjustment_interval: Duration::from_secs(10),
-            efficiency_threshold: 0.60,
+            max_threads: usize::MAX,
+            baseline_interval: Duration::from_millis(250),
+            adjustment_interval: Duration::from_millis(250),
+            loss_threshold: 0.20,
         }
     }
 }
@@ -43,8 +47,8 @@ impl AdaptiveThreads {
         self.max_threads = self.max_threads.max(1);
         self.baseline_interval = self.baseline_interval.max(Duration::from_millis(1));
         self.adjustment_interval = self.adjustment_interval.max(Duration::from_millis(1));
-        if !(0.0..=1.0).contains(&self.efficiency_threshold) {
-            self.efficiency_threshold = 0.60;
+        if !(0.0..=1.0).contains(&self.loss_threshold) {
+            self.loss_threshold = Self::default().loss_threshold;
         }
         self
     }
@@ -53,26 +57,33 @@ impl AdaptiveThreads {
 #[derive(Clone, Copy)]
 enum Phase {
     Baseline,
-    Up { previous: usize, rate: f64 },
-    Down { previous: usize, rate: f64 },
-    Hold { down: bool },
+    Probe { previous_rate: f64 },
+    Hold,
 }
 
 pub(crate) struct Controller {
     config: AdaptiveThreads,
     phase: Phase,
-    baseline: f64,
     active: usize,
 }
 
 impl Controller {
-    pub(crate) fn new(config: AdaptiveThreads) -> Self {
+    pub(crate) fn new(config: AdaptiveThreads, initial: usize) -> Self {
+        let config = config.normalized();
+        let active = initial.max(1).min(config.max_threads);
         Self {
-            config: config.normalized(),
-            phase: Phase::Baseline,
-            baseline: 0.0,
-            active: 1,
+            config,
+            phase: if active == 1 {
+                Phase::Hold
+            } else {
+                Phase::Baseline
+            },
+            active,
         }
+    }
+
+    pub(crate) fn holding(&self) -> bool {
+        matches!(self.phase, Phase::Hold)
     }
 
     pub(crate) fn interval(&self) -> Duration {
@@ -83,16 +94,14 @@ impl Controller {
         }
     }
 
-    fn probe_up(&mut self, rate: f64) {
-        let next = self.active.saturating_mul(2).min(self.config.max_threads);
-        if next > self.active {
-            self.phase = Phase::Up {
-                previous: self.active,
-                rate,
+    fn probe(&mut self, rate: f64) {
+        if self.active > 1 {
+            self.phase = Phase::Probe {
+                previous_rate: rate,
             };
-            self.active = next;
+            self.active -= 1;
         } else {
-            self.phase = Phase::Hold { down: true };
+            self.phase = Phase::Hold;
         }
     }
 
@@ -101,51 +110,20 @@ impl Controller {
             return self.active;
         }
         let rate = entries as f64 / elapsed.as_secs_f64();
-        let required = self.baseline * self.config.efficiency_threshold;
         match self.phase {
-            Phase::Baseline => {
-                // An idle streaming pool has no usable baseline; wait for a nonempty window.
-                if entries > 0 {
-                    self.baseline = rate;
-                    self.probe_up(rate);
-                }
-            }
-            Phase::Up {
-                previous,
-                rate: previous_rate,
-            } => {
-                let marginal = (rate - previous_rate) / (self.active - previous) as f64;
-                if marginal >= required {
-                    self.probe_up(rate);
+            Phase::Baseline if entries > 0 => self.probe(rate),
+            Phase::Probe { previous_rate } => {
+                let previous = self.active + 1;
+                let loss = previous_rate - rate;
+                let allowed = self.config.loss_threshold * (previous_rate / previous as f64);
+                if entries > 0 && loss < allowed {
+                    self.probe(rate);
                 } else {
                     self.active = previous;
-                    self.phase = Phase::Hold { down: true };
+                    self.phase = Phase::Hold;
                 }
             }
-            Phase::Down {
-                previous,
-                rate: previous_rate,
-            } => {
-                let marginal = (previous_rate - rate) / (previous - self.active) as f64;
-                if marginal >= required {
-                    self.active = previous;
-                }
-                self.phase = Phase::Hold { down: false };
-            }
-            Phase::Hold { down } => {
-                if entries == 0 {
-                    return self.active;
-                }
-                if down && self.active > 1 {
-                    self.phase = Phase::Down {
-                        previous: self.active,
-                        rate,
-                    };
-                    self.active = (self.active / 2).max(1);
-                } else {
-                    self.probe_up(rate);
-                }
-            }
+            Phase::Baseline | Phase::Hold => {}
         }
         self.active
     }
@@ -154,70 +132,110 @@ impl Controller {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn controller(max_threads: usize) -> Controller {
-        Controller::new(AdaptiveThreads {
-            max_threads,
-            ..AdaptiveThreads::default()
-        })
+    fn controller(initial: usize) -> Controller {
+        Controller::new(AdaptiveThreads::default(), initial)
     }
     fn sample(c: &mut Controller, rate: usize) -> usize {
         c.sample(rate, Duration::from_secs(1))
     }
     #[test]
-    fn doubling_uses_original_baseline_and_marginal_gain_per_worker() {
-        let mut c = controller(8);
-        assert_eq!(sample(&mut c, 100), 2);
-        assert_eq!(sample(&mut c, 160), 4); // equality is accepted
-        assert_eq!(sample(&mut c, 280), 8); // (280 - 160) / 2 == 60
-        assert_eq!(sample(&mut c, 500), 4); // (500 - 280) / 4 == 55: rollback
+    fn projected_loss_uses_accepted_count_and_strict_boundary() {
+        for (candidate, expected) in [(1581, 14), (1580, 16), (1579, 16)] {
+            let mut c = controller(16);
+            assert_eq!(sample(&mut c, 1600), 15);
+            // Allowed loss: .20 * 1600 / 16 = 20.
+            assert_eq!(sample(&mut c, candidate), expected);
+        }
     }
     #[test]
-    fn downshift_and_recovery_probe_both_directions() {
+    fn descent_is_one_at_a_time_and_refreshes_reference() {
         let mut c = controller(4);
-        assert_eq!(sample(&mut c, 100), 2);
-        assert_eq!(sample(&mut c, 180), 4);
-        assert_eq!(sample(&mut c, 320), 4);
-        assert_eq!(sample(&mut c, 190), 2); // hold -> down probe
-        assert_eq!(sample(&mut c, 180), 2); // higher workers offered little benefit
-        assert_eq!(sample(&mut c, 180), 4); // retry growth
-        assert_eq!(sample(&mut c, 330), 4);
-        assert_eq!(sample(&mut c, 330), 2);
-        assert_eq!(sample(&mut c, 180), 4); // useful higher count restored
+        assert_eq!(sample(&mut c, 1000), 3);
+        assert_eq!(sample(&mut c, 960), 2); // loss 40 < 50
+        assert_eq!(sample(&mut c, 895), 3); // loss 65 >= .20 * 960 / 3 = 64
+        assert!(c.holding());
+        for rate in [0, 100, 2000] {
+            assert_eq!(sample(&mut c, rate), 3);
+        }
     }
     #[test]
-    fn clamps_non_power_of_two_caps_and_handles_empty_baseline() {
+    fn improvements_and_plateaus_can_descend_to_one() {
+        let mut c = controller(4);
+        assert_eq!(sample(&mut c, 100), 3);
+        assert_eq!(sample(&mut c, 120), 2);
+        assert_eq!(sample(&mut c, 120), 1);
+        assert!(!c.holding()); // one is still a candidate
+        assert_eq!(sample(&mut c, 120), 1);
+        assert!(c.holding());
+        assert_eq!(sample(&mut c, 1), 1);
+    }
+    #[test]
+    fn first_failure_restores_initial_count_permanently() {
+        let mut c = controller(16);
+        assert_eq!(sample(&mut c, 1600), 15);
+        assert_eq!(sample(&mut c, 1500), 16);
+        assert!(c.holding());
+        assert_eq!(sample(&mut c, 9999), 16);
+    }
+    #[test]
+    fn empty_or_invalid_samples_do_not_infer_efficiency() {
         let mut c = controller(3);
-        assert_eq!(sample(&mut c, 0), 1);
+        assert_eq!(sample(&mut c, 0), 3);
+        assert_eq!(c.sample(100, Duration::ZERO), 3);
         assert_eq!(sample(&mut c, 100), 2);
-        assert_eq!(sample(&mut c, 160), 3);
-        assert_eq!(sample(&mut c, 220), 3);
-        let mut c = controller(0);
-        assert_eq!(sample(&mut c, 100), 1);
-        assert_eq!(sample(&mut c, 100), 1);
+        assert_eq!(c.sample(100, Duration::ZERO), 2);
+        assert_eq!(sample(&mut c, 0), 3);
+        assert!(c.holding());
+        for initial in [0, 1] {
+            let mut c = controller(initial);
+            assert!(c.holding());
+            assert_eq!(sample(&mut c, 100), 1);
+        }
     }
     #[test]
-    fn threshold_and_measurement_duration_are_configurable() {
-        let mut c = Controller::new(AdaptiveThreads {
-            efficiency_threshold: 0.8,
-            max_threads: 8,
-            ..AdaptiveThreads::default()
-        });
-        assert_eq!(c.sample(200, Duration::from_secs(2)), 2);
-        assert_eq!(c.sample(350, Duration::from_secs(2)), 1);
-        assert_eq!(c.sample(100, Duration::ZERO), 1);
+    fn count_threshold_and_durations_are_configurable() {
+        let mut c = Controller::new(
+            AdaptiveThreads {
+                max_threads: 3,
+                baseline_interval: Duration::from_millis(50),
+                adjustment_interval: Duration::from_millis(100),
+                loss_threshold: 0.5,
+            },
+            16,
+        );
+        assert_eq!(c.interval(), Duration::from_millis(50));
+        assert_eq!(c.sample(300, Duration::from_secs(2)), 2);
+        assert_eq!(c.interval(), Duration::from_millis(100));
+        assert_eq!(c.sample(126, Duration::from_secs(1)), 1); // 24 < 25
+        assert_eq!(c.sample(180, Duration::from_secs(2)), 2); // 36 >= 31.5
+    }
+    #[test]
+    fn zero_threshold_requires_an_improvement() {
+        let mut c = Controller::new(
+            AdaptiveThreads {
+                loss_threshold: 0.0,
+                ..AdaptiveThreads::default()
+            },
+            3,
+        );
+        assert_eq!(sample(&mut c, 100), 2);
+        assert_eq!(sample(&mut c, 101), 1);
+        assert_eq!(sample(&mut c, 101), 2);
     }
     #[test]
     fn invalid_configuration_is_bounded() {
-        let cfg = AdaptiveThreads {
-            max_threads: 0,
-            baseline_interval: Duration::ZERO,
-            adjustment_interval: Duration::ZERO,
-            efficiency_threshold: f64::NAN,
+        for threshold in [f64::NAN, f64::INFINITY, -0.1, 1.1] {
+            let cfg = AdaptiveThreads {
+                max_threads: 0,
+                baseline_interval: Duration::ZERO,
+                adjustment_interval: Duration::ZERO,
+                loss_threshold: threshold,
+            }
+            .normalized();
+            assert_eq!(cfg.max_threads, 1);
+            assert!((cfg.loss_threshold - 0.2).abs() < f64::EPSILON);
+            assert_eq!(cfg.baseline_interval, Duration::from_millis(1));
+            assert_eq!(cfg.adjustment_interval, Duration::from_millis(1));
         }
-        .normalized();
-        assert_eq!(cfg.max_threads, 1);
-        assert!((cfg.efficiency_threshold - 0.6).abs() < f64::EPSILON);
-        assert!(!cfg.baseline_interval.is_zero());
-        assert!(!cfg.adjustment_interval.is_zero());
     }
 }
