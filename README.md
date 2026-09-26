@@ -178,22 +178,25 @@ dua aggregate --help
 
 Scans start with the requested `--threads N` workers. Omitted or `0` uses the
 available logical processors. By default, the controller searches for fewer workers
-that retain **80% of recently measured useful entry throughput**. It first probes
+that retain **80% of initially measured useful entry throughput**. It first probes
 half the initial count, halves again when accepted, and refines the first failing
-bracket. Each count needs two passing comparisons out of at most three; a single
-noisy failure no longer ends the search. Each comparison refreshes its reference at
-the initial count, so successive reductions do not compound an 80% allowance.
+bracket. Each count needs two passing windows out of at most three, measured at that count.
+The initial reference is measured once and reused: the search moves directly between
+candidates without returning to the initial count for reference measurements.
+Successive reductions do not compound the 80% allowance.
 
-Reference and candidate windows default to 250 ms each. A candidate window starts
+The initial reference and candidate windows default to 250 ms each. A candidate window starts
 only after retired workers finish their current jobs and acknowledge parking.
 Their queues remain stealable. Large directory jobs can delay retirement, and a
 short scan may finish before the search settles. Empty, completed, or substantially
 consumer-backpressured windows cannot accept a reduction. Inconclusive retries are
-bounded; the controller returns to the last accepted count. The pool allocates the
+bounded; an inconclusive candidate is rejected and the bracket is refined. Upward
+steps stay within the bracket; even returning to the initial count requires first
+rejecting its adjacent lower count. The pool allocates the
 initial count up front and parks retired workers.
 
 These are sequential measurements of a changing workload. Directory shape, cache
-state, storage latency and consumer speed can affect the result; this is not a
+state, storage latency and consumer speed can make the initial reference stale; this is not a
 measurement of disk utilization or a guarantee of the optimal count. A streaming
 pool shares a search across roots; restarting a core `Walk` resets the search.
 
@@ -201,7 +204,7 @@ pool shares a search across roots; restarting a core `Walk` resets the search.
 | --- | --- | --- |
 | `--threads N` | Available logical processors | Initial count; `0` also selects available logical processors. |
 | `--max-threads N` | No additional cap | Cap the initial adaptive count; at least 1. |
-| `--thread-baseline-ms N` | 250 | Duration of each reference measurement. |
+| `--thread-baseline-ms N` | 250 | Duration of the single initial reference measurement. |
 | `--thread-adjustment-ms N` | 250 | Candidate measurement duration after retirement. |
 | `--thread-throughput-percent PERCENT` | 80 | Minimum candidate/reference throughput percentage, from 0 to 100. |
 | `--thread-loss-percent PERCENT` | Unset | Explicitly select the legacy marginal-loss policy below. |
@@ -258,9 +261,9 @@ The controller and longer-walk measurement procedure are documented in
 [THREAD-TUNING.md](etc/profiling/THREAD-TUNING.md).
 `thread_tuning_complete()` separately reports whether the search has finished.
 These getters are separate concurrent observations. This harness measures raw core
-traversal with telemetry overhead, not CLI aggregation. Two full-home-directory core measurements settled at seven workers and held that
-count; elapsed time and CPU tradeoffs are recorded in the report above. These
-measurements do not establish an optimal count for other trees or systems.
+traversal with telemetry overhead, not CLI aggregation. Historical home-directory measurements and current controller validation are
+recorded in the report above; historical results do not establish the behavior
+of a revised policy or an optimal count for other trees or systems.
 
 On macOS, the `--deduplicate-apfs-clones` traversal option counts fully shared
 APFS file clones only once in aggregate and interactive runs. It is opt-in

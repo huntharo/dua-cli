@@ -3,9 +3,10 @@
 The previous CLI controller tested 16 -> 15 and permanently held 16 after its first
 rejected sample. It could not reach the much cheaper eight-worker configuration on
 the reference tree. The CLI now defaults to a coarse throughput-retention search:
-halve, repeat adjacent reference/candidate comparisons, then refine the first
-failing bracket. Two passing votes out of at most three are required per count.
-Every pair refreshes the initial-count reference; the 80% allowance does not compound.
+measure the initial count once, halve, then refine the first failing bracket.
+Two passing windows out of at most three are required per count; repeated votes
+stay at that count. The same initial reference is retained, so the 80% allowance
+does not compound. No additional high-count reference measurements are performed.
 
 `--thread-throughput-percent 80` sets the new target. Explicit
 `--thread-loss-percent 20` selects the unchanged legacy formula; `--fixed-threads`
@@ -28,10 +29,14 @@ count can be chosen before all retiring jobs finish. These getters are separate
 concurrent observations, not an atomic snapshot.
 
 The controller performs a bounded search and then holds its selection until a
-restart. It deliberately returns to the initial count between probe windows.
-Those temporary reference comparisons are expected; continuing changes after
-search completion would be a defect. Synthetic tests verify that arbitrary rate
-changes after completion cannot restart the search.
+restart. A failure advances directly to the midpoint between rejected and accepted
+counts. Starting at 16, a return to 16 requires rejecting 8, 12, 14, then 15;
+there is no direct reset from a lower candidate. Three inconclusive windows reject
+a candidate and refine the bracket in the same way. Empty initial windows wait
+for work; a repeatedly backpressured initial reference retains the initial count
+without starting a search. Synthetic tests cover both valid and inconclusive
+samples and verify that arbitrary rate changes cannot restart a completed search.
+The one initial reference can become stale as directory composition changes.
 
 The telemetry example remains restricted to `~/github` unless `--allow-home` is
 explicitly supplied. It prints numeric counts and thread states, without filenames.
@@ -53,7 +58,15 @@ case. A live home directory can change during the comparison; inaccessible paths
 are counted without elevated privileges. Count/error differences must be reported
 before interpreting performance differences. No caches are purged.
 
-## Home-directory results (2026-09-26)
+## Single-reference validation
+
+The current implementation removes repeated initial-count reference probes. The
+workspace and controller tests cover the direct midpoint transitions and retries
+in place. A new/reference/reference/new home-directory comparison is pending,
+using frozen binaries and no overlapping builds. The table below is historical
+and must not be attributed to this revised controller.
+
+## Historical repeated-reference results (2026-09-26)
 
 macOS 26.6.1 / APFS, release core telemetry example from standalone commit
 `5c36949`, initial count 16, 250 ms reference/candidate windows, 80% target.
@@ -119,7 +132,7 @@ finished with exit status zero; no more scans were needed to assess oscillation.
 
 ## Validation
 
-335 workspace tests with all features passed. Strict workspace/all-target/all-feature
+The historical build passed 335 workspace tests with all features. Strict workspace/all-target/all-feature
 Clippy, Linux musl and Windows MSVC core all-target checks, formatting and diff checks
 passed. The CLI and telemetry example built in release mode. Tests cover threshold
 boundaries, repeated votes, bounded refinement and permanent hold under subsequent

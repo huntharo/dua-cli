@@ -54,24 +54,28 @@ impl AdaptiveThreads {
     }
 }
 
-/// Opt-in coarse search for fewer workers retaining recent useful throughput.
+/// Opt-in coarse search for fewer workers retaining initial useful throughput.
 ///
 /// Probe half the accepted count, then bisect the first failing bracket. Each candidate
-/// needs two passing comparisons out of at most three. Every comparison measures the
-/// initial count again immediately before the candidate, so losses do not compound as
-/// counts fall and one noisy rejection does not end the search. At most logarithmically
-/// many candidate counts are tested; the final count is held until the walk restarts.
+/// needs two passing windows out of at most three, measured consecutively at that count.
+/// The initial-count reference is measured once and reused throughout the search; workers
+/// are not restored just to refresh it. This prevents compounded losses and repeated
+/// high-concurrency reference probes. Counts increase only to refine a failed bracket or
+/// finish at the adjacent accepted count. At most logarithmically many candidates are tested;
+/// the final count is held until the walk restarts.
 ///
 /// Measurements begin after retirement acknowledgements. Empty, completed, or substantially
 /// consumer-backpressured windows cannot accept a reduction. Three inconclusive windows
-/// abandon the search at the last accepted count. Initial empty windows wait for work.
+/// reject that candidate and refine the bracket, without jumping to the initial count.
+/// Initial empty windows wait for work; three backpressured reference windows retain the
+/// initial count without starting a search.
 /// The target describes observed entries/second, not disk utilization. Changing workloads
-/// can still bias comparisons; this bounded search does not guarantee a global optimum.
+/// can make the initial reference stale; this bounded search does not guarantee a global optimum.
 #[derive(Clone, Copy, Debug)]
 pub struct ThroughputThreads {
     /// Cap on initial workers. Zero becomes one; workers never exceed the initial count.
     pub max_threads: usize,
-    /// Duration of each fresh initial-count reference measurement. Defaults to 250 ms.
+    /// Duration of the single initial-count reference measurement. Defaults to 250 ms.
     pub baseline_interval: Duration,
     /// Duration of each settled candidate measurement. Defaults to 250 ms.
     pub adjustment_interval: Duration,
@@ -232,6 +236,23 @@ impl ThroughputController {
         self.phase = ThroughputPhase::Hold;
     }
 
+    fn finish_candidate(&mut self, accepted: bool) {
+        if accepted {
+            self.accepted = self.candidate;
+        } else {
+            self.rejected = self.candidate;
+        }
+        if self.accepted - self.rejected <= 1 {
+            self.hold();
+            return;
+        }
+        self.candidate = self.rejected + (self.accepted - self.rejected) / 2;
+        self.active = self.candidate;
+        self.passes = 0;
+        self.failures = 0;
+        self.inconclusive = 0;
+    }
+
     fn sample(&mut self, entries: usize, elapsed: Duration, backpressured: bool) -> usize {
         if elapsed.is_zero() || self.holding() {
             return self.active;
@@ -250,11 +271,14 @@ impl ThroughputController {
             }
             self.inconclusive += 1;
             if self.inconclusive == 3 {
-                self.hold();
-            } else {
-                self.active = self.initial;
-                self.phase = ThroughputPhase::Reference;
+                if matches!(self.phase, ThroughputPhase::Reference) {
+                    self.hold(); // Still at the initial count; no reference was obtained.
+                } else {
+                    self.finish_candidate(false);
+                }
             }
+            // Retry at the current count. A missing or backpressured sample is not a reason
+            // to restart high-concurrency reference measurements.
             return self.active;
         }
         let rate = entries as f64 / elapsed.as_secs_f64();
@@ -263,6 +287,7 @@ impl ThroughputController {
                 self.phase = ThroughputPhase::Candidate {
                     reference_rate: rate,
                 };
+                self.inconclusive = 0;
                 self.active = self.candidate;
             }
             ThroughputPhase::Candidate { reference_rate } => {
@@ -272,22 +297,9 @@ impl ThroughputController {
                     self.failures += 1;
                 }
                 if self.passes == 2 || self.failures == 2 {
-                    if self.passes == 2 {
-                        self.accepted = self.candidate;
-                    } else {
-                        self.rejected = self.candidate;
-                    }
-                    if self.accepted - self.rejected <= 1 {
-                        self.hold();
-                        return self.active;
-                    }
-                    self.candidate = self.rejected + (self.accepted - self.rejected) / 2;
-                    self.passes = 0;
-                    self.failures = 0;
-                    self.inconclusive = 0;
+                    self.finish_candidate(self.passes == 2);
                 }
-                self.active = self.initial;
-                self.phase = ThroughputPhase::Reference;
+                // Otherwise stay at the candidate for its next vote.
             }
             ThroughputPhase::Hold => {}
         }
@@ -490,34 +502,43 @@ mod throughput_tests {
     }
 
     #[test]
-    fn coarse_probe_retries_noise_and_requires_two_votes() {
+    fn coarse_probe_retries_noise_in_place_and_requires_two_votes() {
         let mut c = ThroughputController::new(ThroughputThreads::default(), 16);
         assert_eq!(sample(&mut c, 1000), 8);
-        assert_eq!(sample(&mut c, 790), 16); // No permanent first-failure hold.
+        assert_eq!(sample(&mut c, 790), 8); // Retry without restoring 16.
         assert!(!c.holding());
-        assert_eq!(sample(&mut c, 1000), 8);
-        assert_eq!(sample(&mut c, 800), 16); // Inclusive 80% boundary.
+        assert_eq!(sample(&mut c, 800), 8); // Inclusive 80% boundary.
         assert_eq!(c.accepted, 16); // One pass cannot accept.
-        assert_eq!(sample(&mut c, 1000), 8);
-        assert_eq!(sample(&mut c, 810), 16);
+        assert_eq!(sample(&mut c, 810), 4);
         assert_eq!(c.accepted, 8);
-        assert_eq!(sample(&mut c, 1000), 4);
     }
 
     #[test]
-    fn every_candidate_uses_fresh_initial_reference_without_compounding_loss() {
+    fn one_reference_prevents_compounding_loss_without_high_count_revisits() {
         let mut c = ThroughputController::new(ThroughputThreads::default(), 16);
-        for _ in 0..2 {
-            assert_eq!(sample(&mut c, 1000), 8);
-            assert_eq!(sample(&mut c, 800), 16);
-        }
-        for _ in 0..2 {
-            assert_eq!(sample(&mut c, 1000), 4);
-            assert_eq!(sample(&mut c, 640), 16); // 80% of 8's rate is insufficient.
-        }
-        assert_eq!(sample(&mut c, 1000), 6); // Refine the 4..8 bracket.
+        assert_eq!(sample(&mut c, 1000), 8);
+        assert_eq!(sample(&mut c, 800), 8);
+        assert_eq!(sample(&mut c, 800), 4);
+        assert_eq!(sample(&mut c, 640), 4); // 80% of 8's rate is insufficient.
+        assert_eq!(sample(&mut c, 640), 6); // Refine the 4..8 bracket directly.
         assert_eq!(c.accepted, 8);
         assert_eq!(c.rejected, 4);
+        assert_eq!(sample(&mut c, 790), 6);
+        assert_eq!(sample(&mut c, 790), 7);
+        assert_eq!(sample(&mut c, 800), 7);
+        assert_eq!(sample(&mut c, 800), 7);
+        assert!(c.holding());
+    }
+
+    #[test]
+    fn higher_counts_are_only_bracket_refinement_or_final_rollback() {
+        let mut c = ThroughputController::new(ThroughputThreads::default(), 16);
+        assert_eq!(sample(&mut c, 1000), 8);
+        for (retry, next) in [(8, 12), (12, 14), (14, 15), (15, 16)] {
+            assert_eq!(sample(&mut c, 700), retry);
+            assert_eq!(sample(&mut c, 700), next);
+        }
+        assert!(c.holding()); // All lower counts failed; 16 is the final safe choice.
     }
 
     #[test]
@@ -544,7 +565,7 @@ mod throughput_tests {
     }
 
     #[test]
-    fn empty_and_backpressured_windows_cannot_accept_even_zero_target() {
+    fn empty_and_backpressured_windows_follow_the_bracket_without_jumping_to_initial() {
         for blocked in [false, true] {
             let mut c = ThroughputController::new(
                 ThroughputThreads {
@@ -556,15 +577,15 @@ mod throughput_tests {
             for _ in 0..10 {
                 assert_eq!(sample(&mut c, 0), 16); // Initial streaming gap waits.
             }
-            for _ in 0..3 {
-                assert_eq!(sample(&mut c, 1000), 8);
+            assert_eq!(sample(&mut c, 1000), 8);
+            for expected in [8, 8, 12, 12, 12, 14, 14, 14, 15, 15, 15, 16] {
                 assert_eq!(
                     c.sample(
                         if blocked { 1000 } else { 0 },
                         Duration::from_secs(1),
                         blocked
                     ),
-                    16
+                    expected
                 );
             }
             assert!(c.holding());
@@ -572,18 +593,36 @@ mod throughput_tests {
     }
 
     #[test]
-    fn invalid_later_probe_restores_last_accepted_count() {
+    fn invalid_later_probe_refines_to_adjacent_accepted_count() {
         let mut c = ThroughputController::new(ThroughputThreads::default(), 16);
-        for _ in 0..2 {
-            sample(&mut c, 1000);
-            sample(&mut c, 1000);
-        }
-        for _ in 0..3 {
-            sample(&mut c, 1000);
-            sample(&mut c, 0);
+        assert_eq!(sample(&mut c, 1000), 8);
+        assert_eq!(sample(&mut c, 1000), 8);
+        assert_eq!(sample(&mut c, 1000), 4);
+        for expected in [4, 4, 6, 6, 6, 7, 7, 7, 8] {
+            assert_eq!(sample(&mut c, 0), expected);
         }
         assert!(c.holding());
         assert_eq!(c.active, 8);
+    }
+
+    #[test]
+    fn baseline_retries_do_not_consume_candidate_budget_or_repeat_reference_interval() {
+        let mut c = ThroughputController::new(
+            ThroughputThreads {
+                baseline_interval: Duration::from_millis(50),
+                adjustment_interval: Duration::from_millis(75),
+                ..ThroughputThreads::default()
+            },
+            16,
+        );
+        assert_eq!(c.interval(), Duration::from_millis(50));
+        assert_eq!(c.sample(1000, Duration::from_secs(1), true), 16);
+        assert_eq!(sample(&mut c, 1000), 8);
+        assert_eq!(c.interval(), Duration::from_millis(75));
+        for expected in [8, 8, 12] {
+            assert_eq!(sample(&mut c, 0), expected);
+            assert_eq!(c.interval(), Duration::from_millis(75));
+        }
     }
 
     #[test]

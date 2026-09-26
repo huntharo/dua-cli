@@ -195,8 +195,8 @@ pub struct ScanArgs {
     )]
     pub thread_loss_percent: Option<f64>,
 
-    /// Coarse count reduction retaining PERCENT of recent entries/second [default: 80].
-    /// Halve, retry adjacent comparisons, then refine. This measures throughput, not disk usage.
+    /// Coarse count reduction retaining PERCENT of initial entries/second [default: 80].
+    /// Measure once, halve, repeat candidate windows in place, then bisect. Measures throughput, not disk usage.
     /// Uses the same cap and intervals; takes precedence over --thread-loss-percent.
     #[clap(
         long,
