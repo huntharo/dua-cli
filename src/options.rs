@@ -212,6 +212,11 @@ pub struct ScanArgs {
     #[cfg(target_os = "macos")]
     #[clap(long, value_enum, help_heading = "Traversal Options")]
     pub metadata_strategy: Option<MetadataStrategy>,
+    /// Whole-machine CPU ceiling for throughput tuning [default: 80; 0 disables].
+    /// Includes other processes; best effort with at least one worker. Fixed/legacy ignore it.
+    #[clap(long, env = "DUA_THREAD_SYSTEM_CPU_PERCENT", value_name = "PERCENT",
+        value_parser = parse_percentage, help_heading = "Traversal Options")]
+    pub thread_system_cpu_percent: Option<f64>,
 
     /// Display apparent size instead of disk usage.
     #[clap(
@@ -298,6 +303,7 @@ pub struct StackArgs {
             "thread_adjustment_ms",
             "thread_loss_percent",
             "thread_throughput_percent",
+            "thread_system_cpu_percent",
             "apparent_size",
             "count_hard_links",
             "stay_on_filesystem",
@@ -363,6 +369,7 @@ pub enum Command {
                 "thread_adjustment_ms",
                 "thread_loss_percent",
                 "thread_throughput_percent",
+            "thread_system_cpu_percent",
                 "apparent_size",
                 "count_hard_links",
                 "stay_on_filesystem",
@@ -462,6 +469,7 @@ pub enum Command {
                 "thread_adjustment_ms",
                 "thread_loss_percent",
                 "thread_throughput_percent",
+            "thread_system_cpu_percent",
                 "apparent_size",
                 "count_hard_links",
                 "stay_on_filesystem",
@@ -548,6 +556,8 @@ mod tests {
             ("--thread-throughput-percent", "101"),
             ("--thread-throughput-percent", "NaN"),
             ("--thread-throughput-percent", "inf"),
+            ("--thread-system-cpu-percent", "101"),
+            ("--thread-system-cpu-percent", "NaN"),
         ] {
             assert!(Args::try_parse_from(["dua", flag, invalid]).is_err());
         }
@@ -570,6 +580,7 @@ mod tests {
                 "--thread-adjustment-ms",
                 "--thread-loss-percent",
                 "--thread-throughput-percent",
+                "--thread-system-cpu-percent",
             ] {
                 let error =
                     Args::try_parse_from(["dua", command, "--import", "scan.dua", flag, "2"])

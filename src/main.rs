@@ -646,6 +646,7 @@ fn traversal_options_on_command_line(matches: &clap::ArgMatches) -> bool {
         "thread_adjustment_ms",
         "thread_loss_percent",
         "thread_throughput_percent",
+        "thread_system_cpu_percent",
         "apparent_size",
         "count_hard_links",
         "stay_on_filesystem",
@@ -707,6 +708,9 @@ fn merge_scan_args(
             .or(subcommand.thread_throughput_percent),
         #[cfg(target_os = "macos")]
         metadata_strategy: global.metadata_strategy.or(subcommand.metadata_strategy),
+        thread_system_cpu_percent: global
+            .thread_system_cpu_percent
+            .or(subcommand.thread_system_cpu_percent),
         apparent_size: global.apparent_size || subcommand.apparent_size,
         count_hard_links: global.count_hard_links || subcommand.count_hard_links,
         #[cfg(target_os = "macos")]
@@ -760,6 +764,10 @@ fn walk_options_from(traversal: &options::ScanArgs) -> Result<dua::WalkOptions> 
                 baseline_interval: config.baseline_interval,
                 adjustment_interval: config.adjustment_interval,
                 retained_throughput: percentage / 100.0,
+                system_cpu_limit: traversal.thread_system_cpu_percent.map_or(
+                    dua_core::ThroughputThreads::default().system_cpu_limit,
+                    |percent| (percent > 0.0).then_some(percent / 100.0),
+                ),
             })
     });
     let max_threads = throughput_threads
@@ -1048,6 +1056,46 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
+    fn system_cpu_limit_defaults_overrides_and_disables() {
+        let mut args = scan_args();
+        let limit = super::walk_options_from(&args)
+            .unwrap()
+            .metadata_options
+            .throughput_threads
+            .unwrap()
+            .system_cpu_limit
+            .unwrap();
+        assert!((limit - 0.8).abs() < f64::EPSILON);
+        args.thread_system_cpu_percent = Some(65.0);
+        let limit = super::walk_options_from(&args)
+            .unwrap()
+            .metadata_options
+            .throughput_threads
+            .unwrap()
+            .system_cpu_limit
+            .unwrap();
+        assert!((limit - 0.65).abs() < f64::EPSILON);
+        args.thread_system_cpu_percent = Some(0.0);
+        assert!(
+            super::walk_options_from(&args)
+                .unwrap()
+                .metadata_options
+                .throughput_threads
+                .unwrap()
+                .system_cpu_limit
+                .is_none()
+        );
+        args.fixed_threads = true;
+        assert!(
+            super::walk_options_from(&args)
+                .unwrap()
+                .metadata_options
+                .throughput_threads
+                .is_none()
+        );
+    }
+
+    #[test]
     fn throughput_policy_is_capped_and_fixed_threads_disable_it() {
         let mut args = scan_args();
         args.threads = Some(16);
@@ -1087,6 +1135,7 @@ mod tests {
             thread_throughput_percent: None,
             #[cfg(target_os = "macos")]
             metadata_strategy: None,
+            thread_system_cpu_percent: None,
             apparent_size: false,
             count_hard_links: false,
             #[cfg(target_os = "macos")]

@@ -1,21 +1,32 @@
 //! A core traversal comparison harness restricted to ~/github unless --allow-home is explicitly supplied.
-//! Usage: `thread_probe adaptive|throughput|fixed THREADS PATH [BASELINE_MS PROBE_MS PERCENT] [--allow-home]`
-use dua_core::{AdaptiveThreads, Options, Order, ThroughputThreads};
+//! Usage: `thread_probe adaptive|throughput|fixed THREADS PATH [BASELINE_MS PROBE_MS PERCENT] [--allow-home] [--cpu-log PATH]`
+use dua_core::{AdaptiveThreads, Options, Order, SystemCpuSampler, ThroughputThreads};
 use std::{
     error::Error,
+    io::Write,
     path::PathBuf,
     time::{Duration, Instant},
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args: Vec<_> = std::env::args_os().skip(1).collect();
+    let cpu_log_path = if let Some(index) = args.iter().position(|arg| arg == "--cpu-log") {
+        if index + 1 >= args.len() {
+            return Err("--cpu-log requires a path".into());
+        }
+        let path = PathBuf::from(args.remove(index + 1));
+        args.remove(index);
+        Some(path)
+    } else {
+        None
+    };
     let allow_home = args.last().is_some_and(|arg| arg == "--allow-home");
     if allow_home {
         args.pop();
     }
     if args.len() != 3 && args.len() != 6 {
         return Err(
-            "usage: thread_probe adaptive|throughput|fixed THREADS PATH [BASELINE_MS PROBE_MS PERCENT] [--allow-home]"
+            "usage: thread_probe adaptive|throughput|fixed THREADS PATH [BASELINE_MS PROBE_MS PERCENT] [--allow-home] [--cpu-log PATH]"
                 .into(),
         );
     }
@@ -60,6 +71,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         retained_throughput = percent / 100.0;
     }
     let start = Instant::now();
+    let cpu_log = cpu_log_path
+        .map(|path| CpuLog::start(path, start))
+        .transpose()?;
     let mut walk = dua_core::walk(
         &path,
         threads,
@@ -71,6 +85,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 baseline_interval: config.baseline_interval,
                 adjustment_interval: config.adjustment_interval,
                 retained_throughput,
+                ..ThroughputThreads::default()
             }),
             ..Options::default()
         },
@@ -82,12 +97,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         walk.active_threads(),
         walk.threads_settled(),
         walk.thread_tuning_complete(),
+        walk.system_cpu_limited(),
     );
     let mut heartbeat = Instant::now();
     let mut directories = 0_u64;
     let mut logical_bytes = 0_u128;
-    eprintln!("elapsed_ms,admitted,retirement_settled,tuning_complete,entries,errors");
-    eprintln!("0,{},{},{},0,0", state.0, state.1, state.2);
+    eprintln!("elapsed_ms,admitted,retirement_settled,tuning_complete,cpu_limited,entries,errors");
+    eprintln!("0,{},{},{},{},0,0", state.0, state.1, state.2, state.3);
     while let Some(entry) = walk.next() {
         match entry {
             Ok(entry) => {
@@ -106,25 +122,68 @@ fn main() -> Result<(), Box<dyn Error>> {
             walk.active_threads(),
             walk.threads_settled(),
             walk.thread_tuning_complete(),
+            walk.system_cpu_limited(),
         );
         if current != state || heartbeat.elapsed() >= Duration::from_secs(1) {
             heartbeat = Instant::now();
             state = current;
             eprintln!(
-                "{},{},{},{},{entries},{errors}",
+                "{},{},{},{},{},{entries},{errors}",
                 start.elapsed().as_millis(),
                 state.0,
                 state.1,
-                state.2
+                state.2,
+                state.3
             );
         }
     }
+    if let Some(log) = cpu_log {
+        log.finish()?;
+    }
     println!(
-        "seconds={:.6} entries={entries} directories={directories} logical_bytes={logical_bytes} errors={errors} admitted={} retirement_settled={} tuning_complete={}",
+        "seconds={:.6} entries={entries} directories={directories} logical_bytes={logical_bytes} errors={errors} admitted={} retirement_settled={} tuning_complete={} cpu_limited={}",
         start.elapsed().as_secs_f64(),
         walk.active_threads(),
         walk.threads_settled(),
-        walk.thread_tuning_complete()
+        walk.thread_tuning_complete(),
+        walk.system_cpu_limited()
     );
     Ok(())
+}
+
+// Independent sampling continues even while Walk::next is blocked in filesystem work.
+struct CpuLog {
+    stop: std::sync::mpsc::Sender<()>,
+    handle: std::thread::JoinHandle<std::io::Result<()>>,
+}
+
+impl CpuLog {
+    fn start(path: PathBuf, start: Instant) -> std::io::Result<Self> {
+        let mut file = std::fs::File::create(path)?;
+        let (stop, receiver) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let mut sampler = SystemCpuSampler::default();
+            writeln!(file, "elapsed_ms,system_cpu_percent")?;
+            loop {
+                let value = sampler
+                    .sample()
+                    .map_or_else(String::new, |v| format!("{:.4}", v * 100.0));
+                writeln!(file, "{},{}", start.elapsed().as_millis(), value)?;
+                file.flush()?;
+                if receiver.recv_timeout(Duration::from_millis(500))
+                    != Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+                {
+                    return Ok(());
+                }
+            }
+        });
+        Ok(Self { stop, handle })
+    }
+
+    fn finish(self) -> std::io::Result<()> {
+        let _ = self.stop.send(());
+        self.handle
+            .join()
+            .map_err(|_| std::io::Error::other("CPU sampler panicked"))?
+    }
 }
