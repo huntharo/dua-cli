@@ -58,13 +58,73 @@ case. A live home directory can change during the comparison; inaccessible paths
 are counted without elevated privileges. Count/error differences must be reported
 before interpreting performance differences. No caches are purged.
 
-## Single-reference validation
+## Single-reference results (2026-09-26)
 
-The current implementation removes repeated initial-count reference probes. The
-workspace and controller tests cover the direct midpoint transitions and retries
-in place. A new/reference/reference/new home-directory comparison is pending,
-using frozen binaries and no overlapping builds. The table below is historical
-and must not be attributed to this revised controller.
+The revised controller (`c1e072a`) and previous repeated-reference controller
+(`5c36949`) were compared using frozen release binaries in **new/old/old/new**
+order. Both used initial 16, 250 ms windows and an 80% target. The full home
+directory was traversed serially with no overlapping local builds, no cache purge
+and ordinary permissions. These are raw core measurements, not CLI aggregation.
+
+| Run | Controller | Elapsed seconds | CPU seconds | Final workers | Search complete after |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 1 | New, single reference | 102.320 | 308.005 | 5 | 2.360 s |
+| 2 | Old, repeated reference | 97.285 | 457.825 | 7 | 5.171 s |
+| 3 | Old, repeated reference | 86.393 | 449.129 | 8 | 5.091 s |
+| 4 | New, single reference | 110.212 | 272.733 | 4 | 2.555 s |
+
+The new count-change sequences were exactly:
+
+- Run 1: **16 → 8 → 4 → 6 → 5**, then hold.
+- Run 4: **16 → 8 → 4 → 2 → 3 → 4**, then hold.
+
+Neither returned to 16 after its first reduction. Both showed **zero observed
+count changes after tuning completion**, holding their final count through the
+remaining traversal. Run 1 was settled when completion was observed. In run 4,
+completion first appeared with `retirement_settled=false`; the next entry in the
+same 2,555 ms timestamp showed retirement settled. Thus the first completed-search
+observation alone is not evidence that all old workers have parked.
+
+Across the **two observations per controller**, arithmetic means were:
+
+| Controller | Elapsed seconds | CPU seconds | Search completion seconds |
+| --- | ---: | ---: | ---: |
+| Old | 91.839 | 453.477 | 5.131 |
+| New | 106.266 | 290.369 | 2.458 |
+
+The new search completed **52.1% sooner** and used **36.0% less total CPU**, but
+complete traversal took **15.7% longer**. This is a CPU-efficiency tradeoff, not an
+end-to-end speedup. The new controller chose four/five workers instead of seven/eight;
+therefore the CPU difference cannot be attributed solely to removing a few seconds
+of reference probes. Holding lower concurrency for the rest of the walk contributes
+to both lower CPU consumption and longer elapsed time. Different chosen counts
+also show sensitivity to the sampled workload. No optimal-count claim is made.
+
+| Run | Entries | Directories | Logical bytes | Errors |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 22,478,128 | 3,898,332 | 2,066,306,479,732 | 158 |
+| 2 | 22,478,130 | 3,898,332 | 2,066,307,765,637 | 158 |
+| 3 | 22,478,143 | 3,898,333 | 2,066,308,605,367 | 158 |
+| 4 | 22,478,146 | 3,898,333 | 2,066,309,509,700 | 158 |
+
+All four processes exited successfully. All reported 158 traversal/metadata errors,
+which this numeric harness does not classify. Equal error counts do not prove
+identical failures. First-to-last totals differ by 18 entries, one directory and
+3,029,968 logical bytes; the home directory remained live. This small sample and
+run ordering do not isolate cache/background activity or establish identical work.
+Logical bytes are metadata totals, not physical I/O volume.
+
+[Complete numeric telemetry and both binary hashes](artifacts/single-reference-home-tuning.json)
+are retained. Reproduce this ABBA comparison with separately built/frozen executables:
+
+```sh
+python3 etc/profiling/compare_home_tuning.py --allow-home \
+  --binary /tmp/new-thread-probe --reference-binary /tmp/old-thread-probe \
+  --output /tmp/dua-home-abba
+```
+
+The historical fixed-count table below was measured in a different batch and must
+not be substituted for contemporaneous fixed-count controls in this comparison.
 
 ## Historical repeated-reference results (2026-09-26)
 
@@ -132,8 +192,10 @@ finished with exit status zero; no more scans were needed to assess oscillation.
 
 ## Validation
 
-The historical build passed 335 workspace tests with all features. Strict workspace/all-target/all-feature
-Clippy, Linux musl and Windows MSVC core all-target checks, formatting and diff checks
-passed. The CLI and telemetry example built in release mode. Tests cover threshold
-boundaries, repeated votes, bounded refinement and permanent hold under subsequent
-rate changes, plus retirement, restart, cancellation and output backpressure.
+The revised standalone build passed 337 workspace tests with all features. Strict
+workspace/all-target/all-feature Clippy, Linux musl and Windows MSVC core all-target
+checks, formatting and diff checks passed. The telemetry example built in release
+mode. Tests cover in-place votes, the exact midpoint-only return path for both
+failed and inconclusive samples, non-compounding thresholds, bounded refinement,
+permanent hold, retirement, restart, cancellation and output backpressure.
+The stacked APFS branch also passed workspace tests and strict Clippy after integration.
