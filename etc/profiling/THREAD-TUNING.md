@@ -58,7 +58,79 @@ case. A live home directory can change during the comparison; inaccessible paths
 are counted without elevated privileges. Count/error differences must be reported
 before interpreting performance differences. No caches are purged.
 
-## Single-reference results (2026-09-26)
+## Latest fixed-16 comparison: performance failure
+
+After the operator reported removing approximately 650 GB and millions of files,
+the same frozen `c1e072a` executable ran **fixed 16 / tuner / tuner / fixed 16**
+over the home directory. No builds overlapped these scans; no cache purge,
+privilege escalation or production changes occurred. These are raw core timings,
+not CLI aggregation. All four cases completed.
+
+| Run | Policy | Elapsed seconds | CPU seconds | Final workers | Search complete after |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 1 | Fixed 16 | 73.891 | 763.895 | 16 | Fixed |
+| 2 | Revised tuner | 106.871 | 262.209 | 4 | 2.551 s |
+| 3 | Revised tuner | 398.597 | 255.872 | 1 | 6.795 s |
+| 4 | Fixed 16 | 96.688 | 792.343 | 16 | Fixed |
+
+Two-run means were **85.289 s elapsed / 778.119 CPU s** for fixed 16, versus
+**252.734 s / 259.040 CPU s** for the tuner. The 106.9–398.6 s tuner range is
+material; the mean must not hide the one-worker failure. Stable admission does
+not establish a useful choice: there were no changes after search completion,
+but the one-worker run took approximately 4.1–5.4 times the fixed-16 durations.
+This result invalidates treating the current tuner as a reliably measured
+performance improvement. PR #5 is draft pending correction and validation.
+
+The sequences were `16 → 8 → 4 → 2 → 3 → 4` and `16 → 8 → 4 → 2 → 1`.
+The first completed-search observation at four workers was unsettled; both final
+summaries were settled. No repeated initial-count reference resets occurred.
+
+### Failure investigation
+
+At the first observed reduction in the slow run, only 9,489 entries had arrived
+in 504 ms; in the other tuner run, 66,026 entries had arrived in 253 ms. These are
+consumer observations, **not the controller's exact measurement windows**. The
+existing telemetry does not record the controller's private rate or vote decisions.
+
+Code inspection confirms that the controller retains its first valid reference
+rate unchanged, accepts subsequent candidates against that reference, then holds
+its choice without ongoing performance validation. An unusually low startup rate
+can therefore make much lower counts pass, even if later work could benefit from
+more workers. The trace is consistent with this failure mode; it does not isolate
+whether startup I/O, metadata-path selection, scheduling or workload shape produced
+the initial low rate. A representative reference and detection of a bad low-count
+choice remain unresolved. Any correction must preserve the requested midpoint-only
+upward search and must not restore repeated resets to 16.
+
+### Observed tree and errors
+
+| Run | Entries | Directories | Logical bytes | Errors |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 22,478,838 | 3,898,420 | 2,066,382,212,822 | 158 |
+| 2 | 22,478,838 | 3,898,420 | 2,066,382,930,696 | 158 |
+| 3 | 22,479,603 | 3,898,544 | 2,066,526,183,549 | 158 |
+| 4 | 22,498,831 | 3,900,703 | 2,067,747,530,741 | 158 |
+
+These totals remain around 22.5 million entries and 2.067 trillion logical bytes;
+they do **not** show the expected large decrease from the reported deletion. The
+reason has not been established. Do not infer that the deletion did not occur,
+or that logical bytes are physical disk use. This harness visits accessible paths
+under the home directory, does not follow symlinks, and counts individual entry
+metadata without CLI hard-link deduplication.
+
+All cases reported 158 unclassified traversal/metadata errors. First-to-last totals
+changed by 19,993 entries, 2,283 directories and 1,365,317,919 logical bytes. Equal
+error totals and the first pair's matching entry counts do not prove identical work.
+Only the fixed and tuned results in this batch are used for the comparison above.
+
+[Full numeric observations and executable hash](artifacts/current-tree-fixed16-comparison.json)
+are retained. The Python harness wrote all four rows and its success marker.
+The monitor's shell wrapper subsequently failed by assigning a reserved read-only
+variable; its exit file was reconstructed from the harness success marker, not
+captured directly from the wrapper. That bookkeeping error did not interrupt the
+already-completed scans.
+
+## Earlier single-reference comparison (2026-09-26)
 
 The revised controller (`c1e072a`) and previous repeated-reference controller
 (`5c36949`) were compared using frozen release binaries in **new/old/old/new**

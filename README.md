@@ -261,11 +261,13 @@ The controller and longer-walk measurement procedure are documented in
 [THREAD-TUNING.md](etc/profiling/THREAD-TUNING.md).
 `thread_tuning_complete()` separately reports whether the search has finished.
 These getters are separate concurrent observations. This harness measures raw core
-traversal with telemetry overhead, not CLI aggregation. In two home-directory comparisons, the single-reference search held four/five
-workers without returning to sixteen. Mean CPU fell 36.0% versus the prior tuner,
-while elapsed time increased 15.7%. The report above contains individual runs,
-errors and live-directory limitations; these results do not establish an optimal
-count for other trees or systems.
+traversal with telemetry overhead, not CLI aggregation. The latest comparison exposed an unreliable choice: the tuner settled at four
+workers in one run and one worker in another, taking 106.9 and 398.6 seconds versus
+73.9 and 96.7 seconds for fixed sixteen. The unchanged initial reference can
+underestimate useful throughput after a slow startup, and the final count is not
+revalidated. PR #5 remains draft; the report above records the failure, traversal
+errors and unresolved dataset changes. Fixed concurrency remains available with
+`--fixed-threads`.
 
 On macOS, the `--deduplicate-apfs-clones` traversal option counts fully shared
 APFS file clones only once in aggregate and interactive runs. It is opt-in
