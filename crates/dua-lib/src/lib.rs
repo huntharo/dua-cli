@@ -28,7 +28,10 @@
 #![deny(missing_docs)]
 
 mod adaptive;
+#[allow(unsafe_code)] // Native cumulative CPU counters; FFI is isolated in this module.
+mod system_cpu;
 pub use adaptive::{AdaptiveThreads, ThroughputThreads};
+pub use system_cpu::SystemCpuSampler;
 
 use crossbeam::{
     deque::{Injector, Steal, Stealer, Worker},
@@ -316,6 +319,7 @@ struct PoolShared {
     /// Each count change has an epoch; retired workers acknowledge it at job boundaries.
     admission_epoch: AtomicUsize,
     retired_epoch: Vec<AtomicUsize>,
+    cpu_limited: AtomicBool,
     tuning_complete: AtomicBool,
     restart_controller: AtomicBool,
     controller_unparker: Option<Unparker>,
@@ -511,7 +515,18 @@ impl RootWalk {
         })
     }
 
-    /// Whether the controller has finished searching and will hold its chosen count.
+    /// Whether system CPU pressure currently limits workers or pauses throughput sampling.
+    /// False for fixed concurrency or when CPU limiting is disabled. This does not imply
+    /// that this process caused the system load, or that retired workers have finished.
+    #[must_use]
+    pub fn system_cpu_limited(&self) -> bool {
+        self.pool
+            .as_ref()
+            .is_some_and(|pool| pool.shared.cpu_limited.load(AtomicOrdering::Acquire))
+    }
+
+    /// Whether the throughput controller has finished searching.
+    /// The system CPU limiter remains active and may change admission afterward.
     /// Fixed pools return true. Unlike [`Self::threads_settled`], this reports search
     /// completion, not retirement; the final admitted count may still be taking effect.
     /// A successful restart clears it until the new search completes.
@@ -544,7 +559,18 @@ impl Walk {
         })
     }
 
-    /// Whether the controller has finished searching and will hold its chosen count.
+    /// Whether system CPU pressure currently limits workers or pauses throughput sampling.
+    /// False for fixed concurrency or when CPU limiting is disabled. This does not imply
+    /// that this process caused the system load, or that retired workers have finished.
+    #[must_use]
+    pub fn system_cpu_limited(&self) -> bool {
+        self.pool
+            .as_ref()
+            .is_some_and(|pool| pool.shared.cpu_limited.load(AtomicOrdering::Acquire))
+    }
+
+    /// Whether the throughput controller has finished searching.
+    /// The system CPU limiter remains active and may change admission afterward.
     /// Fixed pools return true. Unlike [`Self::threads_settled`], this reports search
     /// completion, not retirement; the final admitted count may still be taking effect.
     /// A successful restart clears it until the new search completes.
@@ -908,6 +934,7 @@ fn start_pool(threads: usize, order: Order, options: Options, next_directory_id:
         blocked_senders: AtomicUsize::new(0),
         admission_epoch: AtomicUsize::new(1),
         retired_epoch: (0..threads).map(|_| AtomicUsize::new(0)).collect(),
+        cpu_limited: AtomicBool::new(false),
         tuning_complete: AtomicBool::new(adaptive.is_none() || threads == 1),
         restart_controller: AtomicBool::new(false),
         controller_unparker: controller_parker.as_ref().map(|p| p.unparker().clone()),
@@ -1040,10 +1067,35 @@ fn retirement_settled(shared: &PoolShared) -> bool {
 }
 
 fn tune_workers(config: impl Into<adaptive::Policy>, parker: Parker, shared: &PoolShared) {
-    let config = config.into();
+    let mut sampler = SystemCpuSampler::default();
+    tune_workers_with_cpu(
+        config.into(),
+        parker,
+        shared,
+        || sampler.sample(),
+        system_cpu::SAMPLE_INTERVAL,
+    );
+}
+
+fn tune_workers_with_cpu(
+    config: adaptive::Policy,
+    parker: Parker,
+    shared: &PoolShared,
+    mut sample_cpu: impl FnMut() -> Option<f64>,
+    cpu_interval: std::time::Duration,
+) {
     let initial = shared.stealers.len();
     let mut controller = config.controller(initial);
+    let mut desired = initial;
     let mut last = Some(std::time::Instant::now());
+    let mut governor = config
+        .system_cpu_limit()
+        .map(|limit| system_cpu::Governor::new(limit, initial));
+    if governor.is_some() {
+        sample_cpu();
+    }
+    let mut cpu_ready = governor.is_none();
+    let mut cpu_at = std::time::Instant::now() + cpu_interval;
     loop {
         if shared.stop.load(AtomicOrdering::Acquire) {
             return;
@@ -1053,27 +1105,61 @@ fn tune_workers(config: impl Into<adaptive::Policy>, parker: Parker, shared: &Po
             .swap(false, AtomicOrdering::AcqRel)
         {
             controller = config.controller(initial);
-            admit_workers(shared, initial);
+            desired = initial;
+            // Preserve an existing CPU-pressure cap across restart; never bypass it.
+            let active = governor.as_ref().map_or(initial, |g| initial.min(g.cap));
+            admit_workers(shared, active);
             last = None;
         }
+        let now = std::time::Instant::now();
+        if let Some(g) = &mut governor
+            && now >= cpu_at
+        {
+            g.sample(
+                sample_cpu(),
+                shared.active_workers.load(AtomicOrdering::Acquire),
+                desired,
+                retirement_settled(shared),
+            );
+            cpu_ready = true; // Unavailable counters do not invent zero load or block traversal.
+            cpu_at = now + cpu_interval;
+            let active = desired.min(g.cap);
+            if active != shared.active_workers.load(AtomicOrdering::Acquire) {
+                admit_workers(shared, active);
+                last = None;
+            }
+        }
+        let cpu_limited = governor.as_ref().is_some_and(|g| g.limited(desired));
+        shared
+            .cpu_limited
+            .store(cpu_limited, AtomicOrdering::Release);
         shared
             .tuning_complete
             .store(controller.holding(), AtomicOrdering::Release);
-        if controller.holding() || !retirement_settled(shared) {
-            // Acknowledgement, restart, and shutdown all unpark the controller. No timer or
-            // sleep is evidence that a worker has retired (a filesystem call may still run).
-            parker.park();
+        if !cpu_ready || cpu_limited {
+            last = None;
+        }
+        if !cpu_ready || cpu_limited || controller.holding() || !retirement_settled(shared) {
+            if governor.is_some() {
+                parker.park_timeout(cpu_at.saturating_duration_since(std::time::Instant::now()));
+            } else {
+                parker.park();
+            }
             continue;
         }
         let start = *last.get_or_insert_with(|| {
-            // Discard all entries delivered while the old workers were finishing their jobs.
+            // Exclude retirement and CPU-pressure periods from throughput decisions.
             shared.completed_entries.store(0, AtomicOrdering::Relaxed);
             shared.blocked_nanos.store(0, AtomicOrdering::Relaxed);
             std::time::Instant::now()
         });
         let remaining = controller.interval().saturating_sub(start.elapsed());
         if !remaining.is_zero() {
-            // Acknowledgements may wake us early; only a complete window is sampled.
+            let remaining = if governor.is_some() {
+                remaining.min(cpu_at.saturating_duration_since(std::time::Instant::now()))
+            } else {
+                remaining
+            };
             parker.park_timeout(remaining);
             continue;
         }
@@ -1081,19 +1167,17 @@ fn tune_workers(config: impl Into<adaptive::Policy>, parker: Parker, shared: &Po
         let entries = shared.completed_entries.swap(0, AtomicOrdering::Relaxed);
         last = Some(now);
         let entries = if shared.active_roots.load(AtomicOrdering::Acquire) == 0 {
-            0 // Finished work is not evidence for accepting a probe.
+            0
         } else {
             entries
         };
         let elapsed = now.duration_since(start);
         let active_workers = shared.active_workers.load(AtomicOrdering::Acquire);
         let blocked = shared.blocked_nanos.swap(0, AtomicOrdering::Relaxed);
-        // More than 10% of worker capacity spent waiting on the consumer is inconclusive.
-        // Charge completed waits, not instantaneous queue occupancy: bursty sends can briefly
-        // fill the queue even with a fast consumer. A fully stalled window has zero entries.
         let backpressured =
             blocked as f64 > elapsed.as_nanos() as f64 * active_workers as f64 * 0.10;
-        let active = controller.sample(entries, elapsed, backpressured);
+        desired = controller.sample(entries, elapsed, backpressured);
+        let active = governor.as_ref().map_or(desired, |g| desired.min(g.cap));
         if shared.active_workers.load(AtomicOrdering::Acquire) != active {
             admit_workers(shared, active);
             last = None;
@@ -1756,6 +1840,7 @@ mod tests {
             blocked_senders: AtomicUsize::new(0),
             admission_epoch: AtomicUsize::new(1),
             retired_epoch: (0..2).map(|_| AtomicUsize::new(0)).collect(),
+            cpu_limited: AtomicBool::new(false),
             tuning_complete: AtomicBool::new(false),
             restart_controller: AtomicBool::new(false),
             controller_unparker: None,
@@ -1790,6 +1875,7 @@ mod tests {
             fs::write(&file, b"entry").unwrap();
             let options = Options {
                 throughput_threads: throughput.then_some(ThroughputThreads {
+                    system_cpu_limit: None,
                     max_threads: 4,
                     baseline_interval: Duration::from_secs(3600),
                     ..ThroughputThreads::default()
@@ -1838,6 +1924,7 @@ mod tests {
             Order::Completion,
             Options {
                 throughput_threads: Some(ThroughputThreads {
+                    system_cpu_limit: None,
                     baseline_interval: Duration::from_secs(3600),
                     ..ThroughputThreads::default()
                 }),
@@ -2014,6 +2101,7 @@ mod tests {
                     blocked_senders: AtomicUsize::new(0),
                     admission_epoch: AtomicUsize::new(1),
                     retired_epoch: (0..2).map(|_| AtomicUsize::new(0)).collect(),
+                    cpu_limited: AtomicBool::new(false),
                     tuning_complete: AtomicBool::new(false),
                     restart_controller: AtomicBool::new(false),
                     controller_unparker: Some(tuner.unparker().clone()),
@@ -2024,6 +2112,7 @@ mod tests {
                     tune_workers(
                         if throughput {
                             adaptive::Policy::Throughput(ThroughputThreads {
+                                system_cpu_limit: None,
                                 baseline_interval: Duration::from_millis(10),
                                 adjustment_interval: Duration::from_millis(10),
                                 ..ThroughputThreads::default()
@@ -2077,6 +2166,67 @@ mod tests {
     }
 
     #[test]
+    fn cpu_pressure_retires_real_workers_recovers_gradually_and_cancels() {
+        use std::time::Duration;
+        let (sender, walk) = stream_roots(8, Order::Completion, Options::default());
+        let shared = Arc::clone(&walk.pool.as_ref().unwrap().shared);
+        let pressure = Arc::new(AtomicUsize::new(95));
+        let control = Arc::clone(&shared);
+        let input = Arc::clone(&pressure);
+        let handle = thread::spawn(move || {
+            tune_workers_with_cpu(
+                adaptive::Policy::Throughput(ThroughputThreads {
+                    baseline_interval: Duration::from_secs(3600),
+                    ..ThroughputThreads::default()
+                }),
+                Parker::new(),
+                &control,
+                || Some(input.load(AtomicOrdering::Acquire) as f64 / 100.0),
+                Duration::from_millis(10),
+            );
+        });
+        wait_until(|| walk.active_threads() == 1 && walk.threads_settled());
+        assert!(walk.system_cpu_limited());
+        pressure.store(78, AtomicOrdering::Release);
+        thread::sleep(Duration::from_millis(80));
+        assert_eq!(walk.active_threads(), 1); // Deadband cannot restart the pool.
+        pressure.store(50, AtomicOrdering::Release);
+        wait_until(|| walk.active_threads() == 2);
+        assert!(walk.system_cpu_limited());
+        wait_until(|| walk.active_threads() == 8);
+        wait_until(|| !walk.system_cpu_limited());
+        drop((walk, sender));
+        handle.join().unwrap();
+        assert!(shared.stop.load(AtomicOrdering::Acquire));
+    }
+
+    #[test]
+    fn cpu_monitor_keeps_running_after_throughput_search_is_complete() {
+        use std::time::Duration;
+        let (sender, walk) = stream_roots(1, Order::Completion, Options::default());
+        let shared = Arc::clone(&walk.pool.as_ref().unwrap().shared);
+        let pressure = Arc::new(AtomicUsize::new(95));
+        let input = Arc::clone(&pressure);
+        let control = Arc::clone(&shared);
+        let handle = thread::spawn(move || {
+            tune_workers_with_cpu(
+                adaptive::Policy::Throughput(ThroughputThreads::default()),
+                Parker::new(),
+                &control,
+                || Some(input.load(AtomicOrdering::Acquire) as f64 / 100.0),
+                Duration::from_millis(10),
+            );
+        });
+        wait_until(|| walk.thread_tuning_complete() && walk.system_cpu_limited());
+        assert_eq!(walk.active_threads(), 1); // Cannot control load from other applications.
+        pressure.store(50, AtomicOrdering::Release);
+        wait_until(|| !walk.system_cpu_limited());
+        assert!(walk.thread_tuning_complete());
+        drop((walk, sender));
+        handle.join().unwrap();
+    }
+
+    #[test]
     fn cancellation_wakes_parked_workers_and_controller() {
         use std::time::Duration;
         for throughput in [false, true] {
@@ -2085,6 +2235,7 @@ mod tests {
                 Order::ParentFirst,
                 Options {
                     throughput_threads: throughput.then_some(ThroughputThreads {
+                        system_cpu_limit: None,
                         baseline_interval: Duration::from_millis(1),
                         ..ThroughputThreads::default()
                     }),

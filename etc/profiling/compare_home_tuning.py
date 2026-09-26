@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--binary", type=Path, default=Path("target/release/examples/thread_probe"))
     parser.add_argument("--reference-binary", type=Path, help="Compare new/reference/reference/new throughput16 builds instead of fixed/legacy controls")
+    parser.add_argument("--system-cpu-monitor", action="store_true", help="Record independent whole-system CPU samples (requires a current binary)")
     parser.add_argument("--timeout", type=int, default=1800)
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
@@ -47,9 +48,13 @@ def main():
         print(f"START {label}", flush=True)
         before = resource.getrusage(resource.RUSAGE_CHILDREN)
         start = time.monotonic()
+        command = [str(executable), mode, str(count), str(home), "--allow-home"]
+        cpu_path = args.output / f"{label}.system-cpu.csv"
+        if args.system_cpu_monitor:
+            command += ["--cpu-log", str(cpu_path)]
         with (args.output / f"{label}.csv").open("w") as telemetry:
             child = subprocess.run(
-                [str(executable), mode, str(count), str(home), "--allow-home"],
+                command,
                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=telemetry,
                 text=True, timeout=args.timeout,
                 env={k: v for k, v in os.environ.items() if not k.startswith("DUA_")},
@@ -86,9 +91,16 @@ def main():
                 change for change in changes if change["elapsed_ms"] > complete["elapsed_ms"]
             ],
         }
+        if args.system_cpu_monitor:
+            with cpu_path.open() as stream:
+                row["system_cpu_samples"] = [
+                    {"elapsed_ms": int(sample["elapsed_ms"]),
+                     "percent": float(sample["system_cpu_percent"]) if sample["system_cpu_percent"] else None}
+                    for sample in csv.DictReader(stream)
+                ]
         result["rows"].append(row)
         (args.output / "results.json").write_text(json.dumps(result, indent=2) + "\n")
-        print(json.dumps({key: value for key, value in row.items() if key not in ("observations", "count_changes")}), flush=True)
+        print(json.dumps({key: value for key, value in row.items() if key not in ("observations", "count_changes", "system_cpu_samples")}), flush=True)
     (args.output / "comparison.done").write_text("0\n")
 
 

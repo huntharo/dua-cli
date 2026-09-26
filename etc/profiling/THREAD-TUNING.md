@@ -16,6 +16,89 @@ This new field takes precedence over `adaptive_threads`; existing walk signature
 and the legacy `AdaptiveThreads` configuration remain unchanged. Exhaustive
 `Options` literals need the new field or `..Default::default()` on every platform.
 
+## System CPU budget and monitoring
+
+`ThroughputThreads::system_cpu_limit` defaults to `Some(0.80)`. CLI
+`--thread-system-cpu-percent 80` sets the same whole-machine limit; zero or `None`
+disables it. Fixed-thread and legacy marginal-loss policies remain unchanged.
+The throughput search chooses a desired count; the independent CPU governor caps
+admission below that desired count while the machine is busy.
+
+- Sample system-wide CPU every 500 ms, including other processes.
+- Two consecutive samples above the limit halve admission, down to one worker.
+- Wait for retirement acknowledgement before another count change.
+- Four consecutive samples below limit minus five percentage points restore one
+  worker, up to the throughput target. The deadband prevents immediate reversal.
+- Keep monitoring after throughput search completion, during blocked retirement,
+  and across streaming gaps. Restart preserves any active resource cap.
+- Discard throughput measurement windows while CPU pressure limits admission;
+  resume fresh windows at the same throughput candidate after capacity returns.
+- Missing readings are unknown, not zero CPU. Retain an existing cap until valid
+  recovery evidence arrives. Unsupported counters leave an unthrottled pool usable.
+
+The CPU governor can intentionally change admission after `thread_tuning_complete()`
+becomes true. That getter now specifically reports the throughput search, not a
+promise of permanent admission. `system_cpu_limited()` reports when pressure caps
+workers or pauses throughput sampling; `threads_settled()` still reports job-boundary
+retirement. CPU-driven recovery adds one worker at a time and is distinct from the
+binary search; neither performs high-count reference remeasurement.
+
+This is best effort: in-flight syscalls cannot be preempted, and other applications
+can keep CPU above the target even when dua has only one worker. One worker under
+such load can be the intended outcome. This does not account for I/O pressure,
+thermal limits, or container CPU quotas, and cannot prove that a throughput choice
+made without CPU pressure was optimal. The initial rate can still become stale.
+
+### Counter semantics and platforms
+
+`SystemCpuSampler` returns a whole-system busy fraction in 0..1 from cumulative
+counter deltas. First reads, zero-delta intervals, resets and failures return `None`.
+On macOS, it uses rootless `host_statistics(HOST_CPU_LOAD_INFO)` with one cached
+process-lifetime host port. Linux reads `/proc/stat`, treating idle and iowait as
+non-busy and excluding guest fields already counted in user/nice. Windows uses
+`GetSystemTimes`, subtracting idle from kernel time. Multi-processor-group Windows
+returns unavailable rather than falsely reporting one group's CPU as whole-system.
+
+Primary API/accounting sources:
+[Apple host statistics](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/kern/host.c),
+[Linux proc accounting](https://kernel.org/doc/html/v6.15/filesystems/proc.html), and
+[Windows GetSystemTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getsystemtimes).
+
+### Measurements and validation
+
+`thread_probe --cpu-log PATH` writes an independent 500 ms CSV stream even while
+entry iteration is blocked. The benchmark runner's `--system-cpu-monitor` option
+stores this stream with each fixed or tuned run. Its ordinary entry telemetry now
+includes `cpu_limited`; the independent log records blanks for unavailable CPU,
+never a fabricated zero. Older binaries do not support this flag.
+
+```sh
+cargo build --release -p dua-core --examples
+# Passive measurement only; no filesystem walk or artificial CPU load.
+target/release/examples/system_cpu_probe 6
+# Traversals with concurrent system-load telemetry; run after builds finish.
+python3 etc/profiling/compare_home_tuning.py --allow-home --system-cpu-monitor \
+  --output /tmp/dua-cpu-monitored
+```
+
+344 workspace tests passed, including deterministic CPU counter/governor tests and
+real-pool tests with injected load: retire 8 workers to 1 under pressure, retain the
+cap in the deadband, recover gradually to 8, cancel promptly, and continue monitoring
+after the throughput search completes. Existing lifecycle tests disable live CPU
+sampling so machine load cannot make correctness tests nondeterministic. Strict
+Clippy and Linux/Windows core checks passed. A six-sample passive native check after our builds finished measured 97.2497–99.8891%
+whole-system CPU, without a filesystem walker running. This confirms usable native
+counters and contemporaneous external contention, not the load during earlier scans.
+[Passive samples](artifacts/system-cpu-passive.csv) are retained. A bounded `~/github`
+walk will verify backoff under the observed load; no fixed-16 home scan is scheduled
+while the machine is saturated. Real monitored traversal results are pending.
+
+The earlier recordings below contain **no system-wide CPU history**. The operator
+reported saturating the machine with other work during the session. Consequently,
+those elapsed-time comparisons cannot establish whether one-worker admission was
+appropriate for contemporaneous load; prior startup-baseline attribution remains
+a hypothesis rather than a demonstrated causal explanation.
+
 ## Long-walk validation
 
 The standalone branch retains the existing filesystem enumeration implementation.
@@ -58,7 +141,7 @@ case. A live home directory can change during the comparison; inaccessible paths
 are counted without elevated privileges. Count/error differences must be reported
 before interpreting performance differences. No caches are purged.
 
-## Latest fixed-16 comparison: performance failure
+## Historical fixed-16 comparison without system CPU context
 
 After the operator reported removing approximately 650 GB and millions of files,
 the same frozen `c1e072a` executable ran **fixed 16 / tuner / tuner / fixed 16**
@@ -78,8 +161,9 @@ Two-run means were **85.289 s elapsed / 778.119 CPU s** for fixed 16, versus
 material; the mean must not hide the one-worker failure. Stable admission does
 not establish a useful choice: there were no changes after search completion,
 but the one-worker run took approximately 4.1–5.4 times the fixed-16 durations.
-This result invalidates treating the current tuner as a reliably measured
-performance improvement. PR #5 is draft pending correction and validation.
+Without system-wide load measurements, this result does not establish whether
+resource contention justified the lower count. It also cannot establish a reliable
+performance improvement. PR #5 is draft pending monitored validation.
 
 The sequences were `16 → 8 → 4 → 2 → 3 → 4` and `16 → 8 → 4 → 2 → 1`.
 The first completed-search observation at four workers was unsettled; both final

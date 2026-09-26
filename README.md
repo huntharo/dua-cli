@@ -185,6 +185,16 @@ The initial reference is measured once and reused: the search moves directly bet
 candidates without returning to the initial count for reference measurements.
 Successive reductions do not compound the 80% allowance.
 
+A separate system-wide CPU limit defaults to **80% of total logical-processor
+capacity**, including other applications. It samples every 500 ms, halves the
+admitted count after two above-limit samples, and keeps at least one worker.
+After four samples below 75% (five percentage points below the configured limit),
+it restores one worker at a time, up to the throughput controller's target.
+The limiter remains active after throughput tuning finishes. Throughput windows
+are discarded while CPU pressure limits workers; no high-count reference reset
+is performed. Downshifts wait for job boundaries. Other applications alone can
+exceed the limit, so this is best effort, not a hard machine-wide CPU guarantee.
+
 The initial reference and candidate windows default to 250 ms each. A candidate window starts
 only after retired workers finish their current jobs and acknowledge parking.
 Their queues remain stealable. Large directory jobs can delay retirement, and a
@@ -207,13 +217,14 @@ pool shares a search across roots; restarting a core `Walk` resets the search.
 | `--thread-baseline-ms N` | 250 | Duration of the single initial reference measurement. |
 | `--thread-adjustment-ms N` | 250 | Candidate measurement duration after retirement. |
 | `--thread-throughput-percent PERCENT` | 80 | Minimum candidate/reference throughput percentage, from 0 to 100. |
+| `--thread-system-cpu-percent PERCENT` | 80 | Whole-machine CPU limit; 0 disables it. Fixed/legacy policies ignore it. |
 | `--thread-loss-percent PERCENT` | Unset | Explicitly select the legacy marginal-loss policy below. |
 | `--fixed-threads` | Off | Disable both controllers and ignore adaptive caps and thresholds. |
 
 For example, `dua --threads 16 ~/github` starts at sixteen and first probes eight.
 `dua --fixed-threads --threads 8 ~/github` holds eight. Options also accept
 `DUA_THREADS`, `DUA_MAX_THREADS`, `DUA_THREAD_BASELINE_MS`, `DUA_THREAD_ADJUSTMENT_MS`,
-`DUA_THREAD_THROUGHPUT_PERCENT`, `DUA_THREAD_LOSS_PERCENT`, and `DUA_FIXED_THREADS=true`.
+`DUA_THREAD_THROUGHPUT_PERCENT`, `DUA_THREAD_SYSTEM_CPU_PERCENT`, `DUA_THREAD_LOSS_PERCENT`, and `DUA_FIXED_THREADS=true`.
 Global values override the same subcommand option; defaults apply after merging.
 An explicit throughput percentage takes precedence over an explicit loss percentage.
 
@@ -225,7 +236,8 @@ a refreshed accepted reference, and rollback/hold at the first rejection. Its
 For core API callers, both `Options::adaptive_threads` and
 `Options::throughput_threads` default to `None`, preserving fixed concurrency.
 `Some(ThroughputThreads::default())` enables the new 80% search and takes precedence
-if both are supplied. `Some(AdaptiveThreads::default())` selects the legacy formula.
+if both are supplied. Its `system_cpu_limit` defaults to `Some(0.80)`; `None` disables
+the resource limit. `Some(AdaptiveThreads::default())` selects the legacy formula.
 Core intervals use `Duration` and percentages use fractions. The constructor's
 thread count is the initial count, bounded by the selected policy's `max_threads`.
 Core count zero becomes one; CLI zero selects available logical processors.
@@ -261,13 +273,13 @@ The controller and longer-walk measurement procedure are documented in
 [THREAD-TUNING.md](etc/profiling/THREAD-TUNING.md).
 `thread_tuning_complete()` separately reports whether the search has finished.
 These getters are separate concurrent observations. This harness measures raw core
-traversal with telemetry overhead, not CLI aggregation. The latest comparison exposed an unreliable choice: the tuner settled at four
-workers in one run and one worker in another, taking 106.9 and 398.6 seconds versus
-73.9 and 96.7 seconds for fixed sixteen. The unchanged initial reference can
-underestimate useful throughput after a slow startup, and the final count is not
-revalidated. PR #5 remains draft; the report above records the failure, traversal
-errors and unresolved dataset changes. Fixed concurrency remains available with
-`--fixed-threads`.
+traversal with telemetry overhead, not CLI aggregation. Earlier comparisons did not record total system CPU. The operator reported heavy
+concurrent work, so a slow one-worker traversal alone cannot distinguish a poor
+throughput choice from appropriate backoff under external contention. The new
+`--cpu-log PATH` option records system CPU independently of entry delivery;
+`system_cpu_limited()` identifies resource-driven admission. See the report for
+historical measurements and current monitoring validation. PR #5 remains draft
+pending measurements with system-load context.
 
 On macOS, the `--deduplicate-apfs-clones` traversal option counts fully shared
 APFS file clones only once in aggregate and interactive runs. It is opt-in

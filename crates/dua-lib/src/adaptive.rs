@@ -62,7 +62,8 @@ impl AdaptiveThreads {
 /// are not restored just to refresh it. This prevents compounded losses and repeated
 /// high-concurrency reference probes. Counts increase only to refine a failed bracket or
 /// finish at the adjacent accepted count. At most logarithmically many candidates are tested;
-/// the final count is held until the walk restarts.
+/// the throughput choice is held until the walk restarts. The independent system CPU
+/// limiter can temporarily reduce admission and restore it gradually under changing load.
 ///
 /// Measurements begin after retirement acknowledgements. Empty, completed, or substantially
 /// consumer-backpressured windows cannot accept a reduction. Three inconclusive windows
@@ -82,6 +83,12 @@ pub struct ThroughputThreads {
     /// Minimum candidate/reference throughput ratio, inclusive. Defaults to `0.80`.
     /// Invalid values outside `0.0..=1.0` use the default. Zero still requires useful work.
     pub retained_throughput: f64,
+    /// Optional whole-machine CPU limit (fraction), default `Some(0.80)`.
+    /// Sustained pressure halves admitted workers to a floor of one; sustained spare capacity
+    /// restores one at a time. Monitoring continues after throughput search completion.
+    /// `None` or zero disables it. Invalid fractions use the default. This is a best-effort
+    /// limit: other processes and in-flight filesystem jobs can keep usage above the target.
+    pub system_cpu_limit: Option<f64>,
 }
 
 impl Default for ThroughputThreads {
@@ -91,6 +98,7 @@ impl Default for ThroughputThreads {
             baseline_interval: Duration::from_millis(250),
             adjustment_interval: Duration::from_millis(250),
             retained_throughput: 0.80,
+            system_cpu_limit: Some(0.80),
         }
     }
 }
@@ -103,6 +111,15 @@ impl ThroughputThreads {
         if !(0.0..=1.0).contains(&self.retained_throughput) {
             self.retained_throughput = Self::default().retained_throughput;
         }
+        self.system_cpu_limit = self.system_cpu_limit.and_then(|limit| {
+            if limit == 0.0 {
+                None
+            } else if (0.0..=1.0).contains(&limit) {
+                Some(limit)
+            } else {
+                Self::default().system_cpu_limit
+            }
+        });
         self
     }
 }
@@ -131,6 +148,13 @@ impl Policy {
         match self {
             Self::Marginal(config) => config.normalized().max_threads,
             Self::Throughput(config) => config.normalized().max_threads,
+        }
+    }
+
+    pub(crate) fn system_cpu_limit(self) -> Option<f64> {
+        match self {
+            Self::Throughput(c) => c.normalized().system_cpu_limit,
+            Self::Marginal(_) => None,
         }
     }
 
@@ -632,6 +656,7 @@ mod throughput_tests {
             baseline_interval: Duration::ZERO,
             adjustment_interval: Duration::ZERO,
             retained_throughput: f64::NAN,
+            system_cpu_limit: Some(f64::NAN),
         }
         .normalized();
         assert_eq!(cfg.max_threads, 1);
