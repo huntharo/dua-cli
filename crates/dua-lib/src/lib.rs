@@ -1,4 +1,4 @@
-//! Parallel filesystem traversal backed by a work-stealing worker pool.
+//! Parallel filesystem traversal backed by a worker pool with batched work distribution.
 //!
 //! [`walk`] yields the root first, then workers read directories and distribute newly discovered
 //! subdirectories among themselves. [`Order::ParentFirst`] publishes each entry's batch
@@ -19,11 +19,13 @@
 //! initial bulk refills and distribute metadata lookups when those reads spend time waiting.
 //! [`stream_roots`] accepts additional roots while walking, using the same worker pool. Workers
 //! check submitted roots before their local LIFO queues so existing trees cannot starve new roots.
-//! Every worker can run available jobs from its local queue or steal from a peer. Each
-//! successful thief wakes another idle worker, ramping up only while work remains stealable. A
-//! worker parks when no queue has work and is unparked when new work arrives or the walk stops. The
-//! last completed job emits the finished event once root submissions are closed; dropping the
-//! iterator stops and joins all workers.
+//! Workers keep private LIFO queues and exchange batches of at most 100 jobs. Small batches
+//! keep a shared reserve available before workers enter filesystem calls; otherwise workers retain
+//! a local chunk and return half
+//! their remaining jobs after one second, checked between jobs and directory-entry batches.
+//! No worker steals individual jobs from a peer. A worker parks when no shared work is available
+//! and is unparked when new work arrives or the walk stops. The last completed job emits the
+//! finished event once root submissions are closed; dropping the iterator stops and joins workers.
 #![deny(unsafe_code)]
 #![deny(missing_docs)]
 
@@ -31,11 +33,12 @@ mod adaptive;
 pub use adaptive::AdaptiveThreads;
 
 use crossbeam::{
-    deque::{Injector, Steal, Stealer, Worker},
+    deque::{Injector, Steal},
     sync::{Parker, Unparker},
 };
 use std::{
-    collections::HashSet,
+    cell::{Cell, RefCell},
+    collections::{HashSet, VecDeque},
     fs, io,
     num::NonZeroU32,
     path::{Path, PathBuf},
@@ -45,6 +48,7 @@ use std::{
         mpsc::{Receiver, SyncSender, sync_channel},
     },
     thread,
+    time::{Duration, Instant},
 };
 
 #[cfg(any(not(any(windows, target_os = "macos")), test))]
@@ -135,10 +139,18 @@ type Descend = dyn Fn(usize, &Entry) -> bool + Send + Sync;
 /// An outer error means the directory could not be opened; inner errors come from reading or
 /// converting individual directory entries.
 type Batch = io::Result<Vec<io::Result<Entry>>>;
-/// Number of directory entries grouped into each metadata job or result batch.
+/// Number of directory entries grouped into each metadata job and its result batch.
 /// Small chunks expose parallel work and stream wide directories while amortizing queue overhead.
+#[cfg(not(windows))]
 const ENTRY_CHUNK_SIZE: usize = 4;
-/// Keep enough metadata jobs available for thieves without retaining an entire wide directory.
+/// Native enumeration already supplies metadata; amortize result-channel coordination separately.
+#[cfg(any(windows, target_os = "macos"))]
+const NATIVE_ENTRY_CHUNK_SIZE: usize = 100;
+/// Maximum number of jobs transferred through the shared work queue at once.
+const WORK_CHUNK_SIZE: usize = 100;
+/// Return half of unfinished local work at this interval, at cooperative scheduling boundaries.
+const WORK_SHARE_INTERVAL: Duration = Duration::from_secs(1);
+/// Bound private metadata queues without retaining an entire wide directory.
 #[cfg(not(windows))]
 const MAX_QUEUED_STAT_JOBS: usize = 64;
 #[cfg(target_os = "macos")]
@@ -289,7 +301,12 @@ pub enum RootEvent {
 struct PoolShared {
     /// Shared queue for initial roots, newly submitted roots, and input closure.
     injector: Injector<Job>,
-    stealers: Vec<Stealer<Job>>,
+    /// Directory and metadata jobs transferred as whole chunks, never stolen from a peer.
+    work: Injector<VecDeque<Job>>,
+    /// Bounds shared work retention independently of the private metadata queue limits.
+    work_batches: AtomicUsize,
+    /// Scheduling hint only; idle flags and a second queue check protect wake-up correctness.
+    idle_count: AtomicUsize,
     stop: AtomicBool,
     events: SyncSender<Event>,
     /// Active roots, plus one while a streaming input remains open.
@@ -815,12 +832,14 @@ fn start_pool(threads: usize, order: Order, options: Options, next_directory_id:
     let adaptive = options.adaptive_threads.map(AdaptiveThreads::normalized);
     let threads = adaptive.map_or(threads, |config| config.max_threads);
     let controller_parker = adaptive.map(|_| Parker::new());
-    let workers: Vec<_> = (0..threads).map(|_| Worker::new_lifo()).collect();
+    let workers: Vec<_> = (0..threads).map(|_| LocalQueue::new()).collect();
     let parkers: Vec<_> = (0..threads).map(|_| Parker::new()).collect();
     let (event_tx, event_rx) = sync_channel(threads * 2);
     let shared = Arc::new(PoolShared {
         injector: Injector::new(),
-        stealers: workers.iter().map(Worker::stealer).collect(),
+        work: Injector::new(),
+        work_batches: AtomicUsize::new(0),
+        idle_count: AtomicUsize::new(0),
         stop: AtomicBool::new(false),
         events: event_tx,
         active_roots: AtomicUsize::new(0),
@@ -960,15 +979,16 @@ fn tune_workers(config: AdaptiveThreads, parker: Parker, shared: &PoolShared) {
         let active = controller.sample(entries, now.duration_since(last));
         last = now;
         if shared.active_workers.swap(active, AtomicOrdering::AcqRel) != active {
-            // A retiring worker may own queued jobs. Wake surviving workers to steal them.
+            // Wake retiring workers to return private jobs, and surviving workers to claim them.
             shared.wake_workers();
         }
     }
 }
 
-fn worker_loop(idx: usize, worker: Worker<Job>, parker: Parker, shared: Arc<PoolShared>) {
+fn worker_loop(idx: usize, worker: LocalQueue, parker: Parker, shared: Arc<PoolShared>) {
     while !shared.stop.load(AtomicOrdering::Relaxed) {
         if idx >= shared.active_workers.load(AtomicOrdering::Acquire) {
+            worker.release_all(&shared);
             shared.idle[idx].store(true, AtomicOrdering::Release);
             if idx >= shared.active_workers.load(AtomicOrdering::Acquire)
                 && !shared.stop.load(AtomicOrdering::Relaxed)
@@ -978,24 +998,23 @@ fn worker_loop(idx: usize, worker: Worker<Job>, parker: Parker, shared: Arc<Pool
             shared.idle[idx].store(false, AtomicOrdering::Release);
             continue;
         }
-        let found = if let Some(found) = find_job(&worker, &shared) {
-            found
+        let job = if let Some(job) = find_job(&worker, &shared) {
+            job
         } else {
             shared.idle[idx].store(true, AtomicOrdering::Release);
-            let Some(found) = find_job(&worker, &shared) else {
+            shared.idle_count.fetch_add(1, AtomicOrdering::Relaxed);
+            // Recheck after announcing idleness so publication cannot race with parking.
+            let found = find_job(&worker, &shared);
+            if found.is_none() {
                 parker.park();
-                shared.idle[idx].store(false, AtomicOrdering::Release);
-                continue;
-            };
+            }
+            shared.idle_count.fetch_sub(1, AtomicOrdering::Relaxed);
             shared.idle[idx].store(false, AtomicOrdering::Release);
-            found
+            let Some(job) = found else { continue };
+            job
         };
-        let (job, stolen) = found;
-        if stolen {
-            // A successful steal proves peer work is available; wake one more worker so
-            // concurrency ramps up only while work remains stealable.
-            shared.wake_worker();
-        }
+        // A newly claimed chunk may be the only shared work. Split it during initial ramp-up.
+        worker.share_work(&shared, Instant::now());
         run_job(job, &worker, &shared);
     }
 }
@@ -1016,39 +1035,120 @@ impl Drop for Pool {
     }
 }
 
-/// Find newly submitted roots, then local work, then work from peers.
-///
-/// Check submitted roots before local directory jobs so a large existing tree cannot starve
-/// newly discovered roots. Local LIFO work still takes priority over stealing from peers.
-///
-/// Returns the selected job and whether it was stolen from another worker; the caller uses a
-/// successful steal to wake another idle worker. Returns `None` when a full scan finds no work.
-fn find_job(worker: &Worker<Job>, shared: &PoolShared) -> Option<(Job, bool)> {
-    loop {
-        match shared.injector.steal() {
-            Steal::Success(job) => return Some((job, true)),
-            Steal::Retry => continue,
-            Steal::Empty => {}
-        }
-        if let Some(job) = worker.pop() {
-            return Some((job, false));
-        }
+/// Thread-owned queue: queue operations do not synchronize with other workers.
+struct LocalQueue {
+    jobs: RefCell<VecDeque<Job>>,
+    last_share: Cell<Instant>,
+}
 
-        let mut retry = false;
-        for stealer in &shared.stealers {
-            match stealer.steal() {
-                Steal::Success(job) => return Some((job, true)),
-                Steal::Retry => retry = true,
-                Steal::Empty => {}
-            }
+impl LocalQueue {
+    fn new() -> Self {
+        Self {
+            jobs: RefCell::new(VecDeque::new()),
+            last_share: Cell::new(Instant::now()),
         }
-        if !retry {
-            return None;
+    }
+
+    fn len(&self) -> usize {
+        self.jobs.borrow().len()
+    }
+
+    fn push(&self, job: Job) {
+        self.jobs.borrow_mut().push_back(job);
+    }
+
+    fn pop(&self) -> Option<Job> {
+        self.jobs.borrow_mut().pop_back()
+    }
+
+    /// Publish all private jobs before suspending a worker whose queue peers cannot access.
+    /// This bypasses the ordinary shared backlog cap: suspension must not strand existing jobs.
+    fn release_all(&self, shared: &PoolShared) {
+        while self.len() > 0 {
+            let count = self.len().min(WORK_CHUNK_SIZE);
+            let chunk = self.jobs.borrow_mut().drain(..count).collect();
+            shared.work_batches.fetch_add(1, AtomicOrdering::Relaxed);
+            shared.work.push(chunk);
+            shared.wake_worker();
+        }
+        self.last_share.set(Instant::now());
+    }
+
+    /// Return older jobs in chunks, keeping recent jobs local for depth-first locality.
+    fn share_work(&self, shared: &PoolShared, now: Instant) {
+        let len = self.len();
+        if len == 0 || shared.active_workers.load(AtomicOrdering::Relaxed) == 1 {
+            return;
+        }
+        let elapsed = now.duration_since(self.last_share.get()) >= WORK_SHARE_INTERVAL;
+        let idle = shared.idle_count.load(AtomicOrdering::Relaxed);
+        let queued = shared.work_batches.load(AtomicOrdering::Relaxed);
+        let mut give = if elapsed {
+            len.div_ceil(2)
+        } else if len >= WORK_CHUNK_SIZE * 2 {
+            len - WORK_CHUNK_SIZE
+        } else if idle > queued || queued < shared.unparkers.len() {
+            // Keep a reserve even while peers are busy: they may become idle while this worker
+            // is blocked inside its next filesystem call and cannot return its private backlog.
+            len.div_ceil(2).min(WORK_CHUNK_SIZE)
+        } else {
+            return;
+        };
+        while give > 0 {
+            // A bounded number of shared chunks prevents a slow metadata consumer from allowing
+            // an enumerator to retain an entire wide directory in the shared queue.
+            if shared
+                .work_batches
+                .fetch_update(AtomicOrdering::Relaxed, AtomicOrdering::Relaxed, |count| {
+                    (count < shared.unparkers.len() * 2).then_some(count + 1)
+                })
+                .is_err()
+            {
+                break;
+            }
+            let count = give.min(WORK_CHUNK_SIZE);
+            let chunk = self.jobs.borrow_mut().drain(..count).collect();
+            shared.work.push(chunk);
+            self.last_share.set(now);
+            shared.wake_worker();
+            give -= count;
         }
     }
 }
 
-fn run_job(job: Job, worker: &Worker<Job>, shared: &PoolShared) {
+/// Prioritize submitted roots at every job boundary, then local work and shared chunks.
+fn find_job(worker: &LocalQueue, shared: &PoolShared) -> Option<Job> {
+    loop {
+        match shared.injector.steal() {
+            Steal::Success(job) => {
+                if !shared.injector.is_empty() {
+                    shared.wake_worker();
+                }
+                return Some(job);
+            }
+            Steal::Retry => continue,
+            Steal::Empty => {}
+        }
+        if let Some(job) = worker.pop() {
+            return Some(job);
+        }
+        match shared.work.steal() {
+            Steal::Success(chunk) => {
+                shared.work_batches.fetch_sub(1, AtomicOrdering::Relaxed);
+                *worker.jobs.borrow_mut() = chunk;
+                worker.last_share.set(Instant::now());
+                if !shared.work.is_empty() {
+                    shared.wake_worker();
+                }
+                return worker.pop();
+            }
+            Steal::Retry => {}
+            Steal::Empty => return None,
+        }
+    }
+}
+
+fn run_job(job: Job, worker: &LocalQueue, shared: &PoolShared) {
     match job {
         Job::StartRoot { root, path } => {
             let mut entry = Entry::from_path(&path, shared.options);
@@ -1125,7 +1225,7 @@ fn run_job(job: Job, worker: &Worker<Job>, shared: &PoolShared) {
 }
 
 /// Read a directory and distribute its metadata lookups among workers.
-/// Successful entries are split into stealable metadata jobs; new chunks are processed inline
+/// Successful entries are split into queued metadata jobs; new chunks are processed inline
 /// once the local queue is full. Enumeration errors are emitted directly.
 /// This adds parallelism within wide directories when metadata calls dominate.
 /// Type-only walks convert entries inline instead, avoiding metadata-job overhead.
@@ -1135,7 +1235,7 @@ fn read_dir_parallel(
     path: Arc<Path>,
     directory_id: usize,
     entry_depth: usize,
-    worker: &Worker<Job>,
+    worker: &LocalQueue,
     shared: &PoolShared,
 ) {
     if shared.options.skip_metadata {
@@ -1213,14 +1313,14 @@ fn read_dir_parallel(
 ///
 /// Native metadata is published directly in chunks. An initial macOS bulk probe can choose
 /// ordinary directory enumeration with bounded parallel metadata jobs. Each parent-first batch
-/// is sent before its child jobs become stealable.
+/// is sent before its child jobs become available to other workers.
 #[cfg(any(windows, target_os = "macos"))]
 fn read_dir_native(
     root: &Arc<Root>,
     path: Arc<Path>,
     directory_id: usize,
     depth: usize,
-    worker: &Worker<Job>,
+    worker: &LocalQueue,
     shared: &PoolShared,
 ) {
     let dir_entries = match ReadDir::open(Arc::clone(&path), depth, shared.options) {
@@ -1252,7 +1352,7 @@ fn read_dir_native(
     };
     #[cfg(target_os = "macos")]
     let mut deferred = Vec::with_capacity(ENTRY_CHUNK_SIZE);
-    let mut entries = Vec::with_capacity(ENTRY_CHUNK_SIZE);
+    let mut entries = Vec::with_capacity(NATIVE_ENTRY_CHUNK_SIZE);
     let mut jobs = Vec::new();
     for mut entry in dir_entries {
         if shared.stop.load(AtomicOrdering::Relaxed) {
@@ -1295,12 +1395,12 @@ fn read_dir_native(
             });
         }
         entries.push(entry);
-        if entries.len() == ENTRY_CHUNK_SIZE
+        if entries.len() == NATIVE_ENTRY_CHUNK_SIZE
             && !publish_directory(
                 root,
                 Ok(std::mem::replace(
                     &mut entries,
-                    Vec::with_capacity(ENTRY_CHUNK_SIZE),
+                    Vec::with_capacity(NATIVE_ENTRY_CHUNK_SIZE),
                 )),
                 std::mem::take(&mut jobs),
                 worker,
@@ -1328,7 +1428,7 @@ fn schedule_stat_entries(
     directory_id: usize,
     entry_depth: usize,
     entries: Vec<StatEntry>,
-    worker: &Worker<Job>,
+    worker: &LocalQueue,
     shared: &PoolShared,
 ) {
     let job = Job::Stat {
@@ -1343,7 +1443,7 @@ fn schedule_stat_entries(
         run_job(job, worker, shared);
     } else {
         worker.push(job);
-        shared.wake_worker();
+        worker.share_work(shared, Instant::now());
     }
 }
 
@@ -1354,7 +1454,7 @@ fn stat_entries(
     directory_id: usize,
     depth: usize,
     entries: Vec<StatEntry>,
-    worker: &Worker<Job>,
+    worker: &LocalQueue,
     shared: &PoolShared,
 ) {
     #[cfg(target_os = "macos")]
@@ -1401,7 +1501,7 @@ fn read_dir_parent_first(
     path: Arc<Path>,
     directory_id: usize,
     depth: usize,
-    worker: &Worker<Job>,
+    worker: &LocalQueue,
     shared: &PoolShared,
 ) {
     read_dir_inline(root, path, directory_id, depth, worker, shared);
@@ -1416,7 +1516,7 @@ fn read_dir_inline(
     path: Arc<Path>,
     directory_id: usize,
     depth: usize,
-    worker: &Worker<Job>,
+    worker: &LocalQueue,
     shared: &PoolShared,
 ) {
     let dir_entries = match fs::read_dir(&path) {
@@ -1429,7 +1529,13 @@ fn read_dir_inline(
     };
     let mut jobs = Vec::new();
     let entries = dir_entries
-        .map(|entry| {
+        .enumerate()
+        .map(|(index, entry)| {
+            if index % WORK_CHUNK_SIZE == 0 {
+                // This platform publishes one complete directory batch. Keep previously
+                // published directories available while converting a wide file-only directory.
+                worker.share_work(shared, Instant::now());
+            }
             entry
                 .and_then(|entry| {
                     Entry::from_dir_entry(depth, Arc::clone(&path), entry, shared.options)
@@ -1484,7 +1590,7 @@ fn publish_directory(
     root: &Arc<Root>,
     batch: Batch,
     jobs: Vec<Job>,
-    worker: &Worker<Job>,
+    worker: &LocalQueue,
     shared: &PoolShared,
 ) -> bool {
     root.pending.fetch_add(jobs.len(), AtomicOrdering::Relaxed);
@@ -1548,29 +1654,29 @@ fn finish_root(shared: &PoolShared) {
     }
 }
 
-fn schedule_jobs(jobs: Vec<Job>, worker: &Worker<Job>, shared: &PoolShared) {
-    let has_jobs = !jobs.is_empty();
+fn schedule_jobs(jobs: Vec<Job>, worker: &LocalQueue, shared: &PoolShared) {
     for job in jobs {
         worker.push(job);
     }
-    if has_jobs {
-        shared.wake_worker();
-    }
+    // File-only batches must also expose older private jobs while a wide directory is read.
+    worker.share_work(shared, Instant::now());
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
-    fn inactive_workers_leave_local_jobs_stealable() {
+    fn inactive_workers_return_local_jobs_before_parking() {
         use std::time::Duration;
-        let workers: Vec<_> = (0..2).map(|_| Worker::new_lifo()).collect();
+        let workers: Vec<_> = (0..2).map(|_| LocalQueue::new()).collect();
         let parkers: Vec<_> = (0..2).map(|_| Parker::new()).collect();
         // Simulate work remaining on a worker that has just been retired.
         workers[1].push(Job::CloseInput);
         let (events, received) = sync_channel(2);
         let shared = Arc::new(PoolShared {
             injector: Injector::new(),
-            stealers: workers.iter().map(Worker::stealer).collect(),
+            work: Injector::new(),
+            work_batches: AtomicUsize::new(0),
+            idle_count: AtomicUsize::new(0),
             stop: AtomicBool::new(false),
             events,
             active_roots: AtomicUsize::new(1),
@@ -1601,7 +1707,7 @@ mod tests {
         }
         assert!(
             matches!(finished, Ok(Event::Finished)),
-            "surviving worker must drain retired queues"
+            "surviving worker must drain returned jobs"
         );
     }
 
@@ -1621,7 +1727,7 @@ mod tests {
         };
         let (mut sender, mut walk) = stream_roots(9, Order::ParentFirst, options);
         assert_eq!(walk.active_threads(), 1);
-        assert_eq!(walk.pool.as_ref().unwrap().shared.stealers.len(), 4);
+        assert_eq!(walk.pool.as_ref().unwrap().shared.unparkers.len(), 4);
         sender.add_root(0, file, |_| true).unwrap();
         assert!(matches!(walk.next(), Some((0, RootEvent::Entry(Ok(_))))));
         assert!(matches!(walk.next(), Some((0, RootEvent::Finished))));
@@ -2516,7 +2622,7 @@ mod tests {
             descend: Arc::new(|_, _| true),
         });
         // Leave this queue unconsumed to model workers stalled on metadata lookups.
-        let worker = Worker::new_lifo();
+        let worker = LocalQueue::new();
         let path = Arc::from(dir.path());
         #[cfg(target_os = "macos")]
         let entries = read_dir(dir.path(), Options::default().skip_metadata()).unwrap();
@@ -2553,7 +2659,7 @@ mod tests {
     #[test]
     fn native_walks_stream_entries_and_child_jobs() {
         let dir = tempfile::tempdir().unwrap();
-        for idx in 0..=ENTRY_CHUNK_SIZE {
+        for idx in 0..=NATIVE_ENTRY_CHUNK_SIZE {
             fs::create_dir_all(dir.path().join(format!("{idx}/child"))).unwrap();
         }
 
@@ -2564,7 +2670,7 @@ mod tests {
                 let seen = AtomicUsize::new(0);
                 let mut entries = walk(dir.path(), 2, order, options, move |entry| {
                     if entry.depth == 1
-                        && seen.fetch_add(1, AtomicOrdering::Relaxed) == ENTRY_CHUNK_SIZE
+                        && seen.fetch_add(1, AtomicOrdering::Relaxed) == NATIVE_ENTRY_CHUNK_SIZE
                     {
                         continue_rx.lock().unwrap().recv().ok();
                     }
@@ -2605,7 +2711,7 @@ mod tests {
                     .chain(remaining)
                     .collect::<Result<Vec<_>, _>>()
                     .unwrap();
-                assert_eq!(entries.len(), 1 + 2 * (ENTRY_CHUNK_SIZE + 1));
+                assert_eq!(entries.len(), 1 + 2 * (NATIVE_ENTRY_CHUNK_SIZE + 1));
                 assert_eq!(entries[0].depth, 0, "the root must be yielded first");
                 if matches!(order, Order::ParentFirst) {
                     let positions = entries
@@ -2624,3 +2730,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod scheduler_tests;
