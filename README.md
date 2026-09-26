@@ -258,8 +258,9 @@ The controller and longer-walk measurement procedure are documented in
 [THREAD-TUNING.md](etc/profiling/THREAD-TUNING.md).
 `thread_tuning_complete()` separately reports whether the search has finished.
 These getters are separate concurrent observations. This harness measures raw core
-traversal with telemetry overhead, not CLI aggregation. No real-tree performance
-claim is implied by the algorithm or its synthetic correctness tests.
+traversal with telemetry overhead, not CLI aggregation. Two full-home-directory core measurements settled at seven workers and held that
+count; elapsed time and CPU tradeoffs are recorded in the report above. These
+measurements do not establish an optimal count for other trees or systems.
 
 On macOS, the `--deduplicate-apfs-clones` traversal option counts fully shared
 APFS file clones only once in aggregate and interactive runs. It is opt-in
