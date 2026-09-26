@@ -15,70 +15,42 @@ This new field takes precedence over `adaptive_threads`; existing walk signature
 and the legacy `AdaptiveThreads` configuration remain unchanged. Exhaustive
 `Options` literals need the new field or `..Default::default()` on every platform.
 
-## End-to-end CLI measurements
+## Long-walk validation
 
-macOS 26.6.1 (25G76), APFS, release binary, serial execution, three observations per
-configuration in forward/reverse/forward order. No concurrent builds were scheduled.
-CPU is summed child-process user + system time, including startup and shutdown;
-wall time includes process launch. The existing Adaptive metadata strategy was used
-throughout. No whole-disk traversal, cache purge, raw-volume access or privilege
-escalation was used.
+The standalone branch retains the existing filesystem enumeration implementation.
+It contains no APFS metadata-strategy or inode-ordering experiment. The earlier
+short `~/github` measurements were collected before separating the branches and
+are not a substitute for measuring this standalone build on a longer traversal.
 
-All nine `~/github` runs exited successfully, emitted no stderr, and produced
-**byte-identical aggregate output**. Timings below are medians:
+`Walk::thread_tuning_complete()` and `RootWalk::thread_tuning_complete()` distinguish
+finished search from `threads_settled()` (acknowledged worker retirement). A final
+count can be chosen before all retiring jobs finish. These getters are separate
+concurrent observations, not an atomic snapshot.
 
-| Configuration | Wall seconds | CPU seconds |
-| --- | ---: | ---: |
-| Legacy, initial 16 | 2.740 | 21.229 |
-| New default, initial 16 | 2.763 | 16.986 |
-| Fixed 8 control | 2.617 | 10.993 |
+The controller performs a bounded search and then holds its selection until a
+restart. It deliberately returns to the initial count between probe windows.
+Those temporary reference comparisons are expected; continuing changes after
+search completion would be a defect. Synthetic tests verify that arbitrary rate
+changes after completion cannot restart the search.
 
-The new default reduced median CPU by **20.0%**, with **0.8%** greater wall time.
-The fixed-eight control remains cheaper because it pays no online search cost.
-These short walks do not establish the eventual chosen count or a full-disk speedup.
-Raw timings, executable SHA-256 and matching output hashes are in
-[throughput-cli-github.json](artifacts/throughput-cli-github.json).
+The telemetry example remains restricted to `~/github` unless `--allow-home` is
+explicitly supplied. It prints numeric counts and thread states, without filenames.
+A heartbeat is emitted once per second as entries arrive; blocked iterator calls
+can delay observation. The final summary records entry/directory/error totals and
+logical bytes. This measures raw core traversal, not CLI aggregation.
 
-A separate nine-run comparison on the stable `~/github/codex/codex-rs` subtree also
-produced byte-identical output. Legacy initial-16 medians were 4.398 seconds wall /
-7.476 CPU; the new default measured 4.518 / 6.478 (**13.4% less CPU**, **2.7% more wall**).
-Fixed eight measured 1.826 / 8.399. These differences show that the existing per-directory
-bulk-vs-parallel metadata probe and directory shape affect latency substantially;
-worker count alone does not determine the result. See
-[throughput-cli-codex.json](artifacts/throughput-cli-codex.json).
-
-The separate raw-core comparison visited 446,039 entries / 13,837 directories,
-with identical logical and allocated byte totals and zero errors in all 12 runs.
-Its telemetry is in [throughput-core-codex.json](artifacts/throughput-core-codex.json).
-Transitions are observed every 1,000 entries. A retired worker can still own a long
-directory job, so provisional admission may outlast a short scan. Measurement windows
-begin only after retirement acknowledgement; transition entries are discarded.
-
-Reproduce after building, while other builds/profilers are idle:
+To run the authorized home-directory comparison after all builds finish:
 
 ```sh
-cargo build --release
-python3 etc/profiling/compare_thread_policies.py ~/github --output /tmp/dua-thread-comparison.json
+cargo build --release -p dua-core --example thread_probe
+python3 etc/profiling/compare_home_tuning.py --allow-home --output /tmp/dua-home-tuning
 ```
 
-## Rejected metadata changes
+The script serially runs throughput 16, fixed 8, legacy 16, fixed 16, throughput 16.
+It records cumulative child CPU time, elapsed time, all observations, admission
+changes, and the first search-complete observation. Results are saved after each
+case. A live home directory can change during the comparison; inaccessible paths
+are counted without elevated privileges. Count/error differences must be reported
+before interpreting performance differences. No caches are purged.
 
-Descriptor-relative substitutions did not establish a benefit and were removed.
-A selective full-directory inode-ordering candidate also failed the end-to-end
-comparison, even after reusing existing directory-size hints to avoid probing small
-directories. On the stable subtree, fixed-eight medians were 2.190 seconds / 7.027 CPU
-for Adaptive versus 2.591 / 8.357 for the selective candidate. All 12 runs in that
-comparison had identical counts and byte totals, with zero errors.
-[Raw candidate results](artifacts/wide-hint-rejected.json) are retained, but the
-candidate implementation and CLI flag are not in the final change. The previously
-documented opt-in 4,096-entry experiments remain unchanged.
-
-## Validation
-
-343 workspace tests with all features passed, including 61 core and 159 CLI unit tests.
-Controller tests cover threshold boundaries, noisy votes, bounded retries, normalization,
-bracket search, and preservation of the legacy formula. Actual-pool tests cover retirement
-acknowledgements, discarded transition entries, restart, one-hour timer cancellation,
-and shutdown with blocked output. Strict workspace/all-target/all-feature Clippy passed.
-Core all-target checks also passed for Linux musl and Windows MSVC.
-Kernel-stack capture and interpretation are documented in [KERNEL-STACKS.md](KERNEL-STACKS.md).
+Home-directory measurements are pending.

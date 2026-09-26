@@ -363,6 +363,7 @@ struct PoolShared {
     /// Each count change has an epoch; retired workers acknowledge it at job boundaries.
     admission_epoch: AtomicUsize,
     retired_epoch: Vec<AtomicUsize>,
+    tuning_complete: AtomicBool,
     restart_controller: AtomicBool,
     controller_unparker: Option<Unparker>,
 }
@@ -558,6 +559,17 @@ impl RootWalk {
         })
     }
 
+    /// Whether the controller has finished searching and will hold its chosen count.
+    /// Fixed pools return true. Unlike [`Self::threads_settled`], this reports search
+    /// completion, not retirement; the final admitted count may still be taking effect.
+    /// A successful restart clears it until the new search completes.
+    #[must_use]
+    pub fn thread_tuning_complete(&self) -> bool {
+        self.pool
+            .as_ref()
+            .is_none_or(|pool| pool.shared.tuning_complete.load(AtomicOrdering::Acquire))
+    }
+
     /// Whether all workers outside the admitted count have acknowledged retirement.
     /// A separate observation from [`Self::active_threads`]; concurrent changes may occur between
     /// calls. Returns `true` without a pool. Candidate measurement waits for this condition.
@@ -578,6 +590,17 @@ impl Walk {
         self.pool.as_ref().map_or(0, |pool| {
             pool.shared.active_workers.load(AtomicOrdering::Acquire)
         })
+    }
+
+    /// Whether the controller has finished searching and will hold its chosen count.
+    /// Fixed pools return true. Unlike [`Self::threads_settled`], this reports search
+    /// completion, not retirement; the final admitted count may still be taking effect.
+    /// A successful restart clears it until the new search completes.
+    #[must_use]
+    pub fn thread_tuning_complete(&self) -> bool {
+        self.pool
+            .as_ref()
+            .is_none_or(|pool| pool.shared.tuning_complete.load(AtomicOrdering::Acquire))
     }
 
     /// Whether all workers outside the admitted count have acknowledged retirement.
@@ -626,6 +649,9 @@ impl Walk {
                 .store(1, AtomicOrdering::Relaxed);
             self.finished = false;
             if pool.shared.controller_unparker.is_some() {
+                pool.shared
+                    .tuning_complete
+                    .store(false, AtomicOrdering::Release);
                 pool.shared
                     .restart_controller
                     .store(true, AtomicOrdering::Release);
@@ -930,6 +956,7 @@ fn start_pool(threads: usize, order: Order, options: Options, next_directory_id:
         blocked_senders: AtomicUsize::new(0),
         admission_epoch: AtomicUsize::new(1),
         retired_epoch: (0..threads).map(|_| AtomicUsize::new(0)).collect(),
+        tuning_complete: AtomicBool::new(adaptive.is_none() || threads == 1),
         restart_controller: AtomicBool::new(false),
         controller_unparker: controller_parker.as_ref().map(|p| p.unparker().clone()),
     });
@@ -1077,6 +1104,9 @@ fn tune_workers(config: impl Into<adaptive::Policy>, parker: Parker, shared: &Po
             admit_workers(shared, initial);
             last = None;
         }
+        shared
+            .tuning_complete
+            .store(controller.holding(), AtomicOrdering::Release);
         if controller.holding() || !retirement_settled(shared) {
             // Acknowledgement, restart, and shutdown all unpark the controller. No timer or
             // sleep is evidence that a worker has retired (a filesystem call may still run).
@@ -1867,6 +1897,7 @@ mod tests {
             blocked_senders: AtomicUsize::new(0),
             admission_epoch: AtomicUsize::new(1),
             retired_epoch: (0..2).map(|_| AtomicUsize::new(0)).collect(),
+            tuning_complete: AtomicBool::new(false),
             restart_controller: AtomicBool::new(false),
             controller_unparker: None,
         });
@@ -1913,6 +1944,7 @@ mod tests {
             };
             let (mut sender, mut walk) = stream_roots(9, Order::ParentFirst, options);
             assert_eq!(walk.active_threads(), 4);
+            assert!(!walk.thread_tuning_complete());
             assert_eq!(walk.pool.as_ref().unwrap().shared.stealers.len(), 4);
             sender.add_root(0, file, |_| true).unwrap();
             assert!(matches!(walk.next(), Some((0, RootEvent::Entry(Ok(_))))));
@@ -2123,6 +2155,7 @@ mod tests {
                     blocked_senders: AtomicUsize::new(0),
                     admission_epoch: AtomicUsize::new(1),
                     retired_epoch: (0..2).map(|_| AtomicUsize::new(0)).collect(),
+                    tuning_complete: AtomicBool::new(false),
                     restart_controller: AtomicBool::new(false),
                     controller_unparker: Some(tuner.unparker().clone()),
                 });
@@ -2162,6 +2195,7 @@ mod tests {
                     100_000
                 );
                 assert!(!retirement_settled(&shared));
+                assert!(!shared.tuning_complete.load(AtomicOrdering::Acquire));
                 if acknowledge {
                     shared.retired_epoch[1].store(
                         shared.admission_epoch.load(AtomicOrdering::Acquire),
@@ -2170,6 +2204,7 @@ mod tests {
                     shared.controller_unparker.as_ref().unwrap().unpark();
                     // Transition entries are discarded, so the empty candidate rolls back instead of accepting.
                     wait_until(|| shared.active_workers.load(AtomicOrdering::Acquire) == 2);
+                    wait_until(|| shared.tuning_complete.load(AtomicOrdering::Acquire));
                 }
                 shared.stop.store(true, AtomicOrdering::Release);
                 shared.controller_unparker.as_ref().unwrap().unpark();
@@ -2275,6 +2310,7 @@ mod tests {
         let (release_tx, release_rx) = crossbeam::channel::bounded(1);
         let (mut roots, walk) = stream_roots(2, Order::ParentFirst, Options::default());
         assert_eq!(walk.pool.as_ref().unwrap().handles.len(), 2);
+        assert!(walk.thread_tuning_complete());
         let (finished_tx, finished_rx) = crossbeam::channel::unbounded();
         let reader = thread::spawn(move || {
             for (index, event) in walk {

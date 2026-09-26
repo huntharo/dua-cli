@@ -240,7 +240,7 @@ cargo build --release
 
 `/usr/bin/time -l` is the macOS form; on Linux use `/usr/bin/time -v`. A separate core
 harness records elapsed milliseconds, admitted count, retirement status, entries,
-and errors. It refuses paths outside `~/github`:
+and errors. It refuses paths outside `~/github` unless `--allow-home` is supplied:
 
 ```sh
 cargo build --release -p dua-core --example thread_probe
@@ -254,10 +254,10 @@ Harness telemetry is observed as entries arrive, so a blocked iterator can delay
 or miss a short transition. An admitted count is provisional during a probe;
 `retirement_settled=false` means former workers have not all acknowledged retirement.
 
-Measured comparisons for the revised controller and the named kernel-stack evidence
-are recorded in [THREAD-TUNING.md](etc/profiling/THREAD-TUNING.md) and
-[KERNEL-STACKS.md](etc/profiling/KERNEL-STACKS.md).
-The two getters are separate concurrent observations. This harness measures raw core
+The controller and longer-walk measurement procedure are documented in
+[THREAD-TUNING.md](etc/profiling/THREAD-TUNING.md).
+`thread_tuning_complete()` separately reports whether the search has finished.
+These getters are separate concurrent observations. This harness measures raw core
 traversal with telemetry overhead, not CLI aggregation. No real-tree performance
 claim is implied by the algorithm or its synthetic correctness tests.
 

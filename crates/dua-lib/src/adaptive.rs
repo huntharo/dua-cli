@@ -534,6 +534,11 @@ mod throughput_tests {
                     assert!(windows <= 8 * initial.ilog2() + 8);
                 }
                 assert_eq!(c.active, target);
+                // Once chosen, changing load cannot trigger endless up/down probing.
+                for rate in [0, 10_000, 1, 100_000] {
+                    assert_eq!(sample(&mut c, rate), target);
+                    assert!(c.holding());
+                }
             }
         }
     }

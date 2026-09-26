@@ -1,5 +1,5 @@
-//! A core traversal comparison harness restricted to ~/github.
-//! Usage: `thread_probe adaptive|throughput|fixed THREADS PATH [BASELINE_MS PROBE_MS PERCENT]`
+//! A core traversal comparison harness restricted to ~/github unless --allow-home is explicitly supplied.
+//! Usage: `thread_probe adaptive|throughput|fixed THREADS PATH [BASELINE_MS PROBE_MS PERCENT] [--allow-home]`
 use dua_core::{AdaptiveThreads, Options, Order, ThroughputThreads};
 use std::{
     error::Error,
@@ -8,10 +8,14 @@ use std::{
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    let mut args: Vec<_> = std::env::args_os().skip(1).collect();
+    let allow_home = args.last().is_some_and(|arg| arg == "--allow-home");
+    if allow_home {
+        args.pop();
+    }
     if args.len() != 3 && args.len() != 6 {
         return Err(
-            "usage: thread_probe adaptive|throughput|fixed THREADS PATH [BASELINE_MS PROBE_MS PERCENT]"
+            "usage: thread_probe adaptive|throughput|fixed THREADS PATH [BASELINE_MS PROBE_MS PERCENT] [--allow-home]"
                 .into(),
         );
     }
@@ -24,11 +28,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("THREADS must be at least 1".into());
     }
     let path = PathBuf::from(&args[2]).canonicalize()?;
-    let allowed = PathBuf::from(std::env::var_os("HOME").ok_or("HOME is not set")?)
-        .join("github")
-        .canonicalize()?;
+    let home = PathBuf::from(std::env::var_os("HOME").ok_or("HOME is not set")?);
+    let allowed = if allow_home {
+        home
+    } else {
+        home.join("github")
+    }
+    .canonicalize()?;
     if !path.starts_with(&allowed) {
-        return Err("comparison scans must stay within ~/github".into());
+        return Err(
+            "comparison scan is outside the allowed root (~/github, or ~ with --allow-home)".into(),
+        );
     }
     let mut config = AdaptiveThreads::default();
     let mut retained_throughput = ThroughputThreads::default().retained_throughput;
@@ -68,35 +78,53 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     let mut entries = 0_u64;
     let mut errors = 0_u64;
-    let mut state = (walk.active_threads(), walk.threads_settled());
-    eprintln!("elapsed_ms,admitted,retirement_settled,entries,errors");
-    eprintln!("0,{},{},0,0", state.0, state.1);
+    let mut state = (
+        walk.active_threads(),
+        walk.threads_settled(),
+        walk.thread_tuning_complete(),
+    );
+    let mut heartbeat = Instant::now();
+    let mut directories = 0_u64;
+    let mut logical_bytes = 0_u128;
+    eprintln!("elapsed_ms,admitted,retirement_settled,tuning_complete,entries,errors");
+    eprintln!("0,{},{},{},0,0", state.0, state.1, state.2);
     while let Some(entry) = walk.next() {
         match entry {
             Ok(entry) => {
                 entries += 1;
+                directories += u64::from(entry.file_type.is_dir());
+                if let Some(Ok(metadata)) = &entry.metadata {
+                    logical_bytes += u128::from(metadata.len());
+                }
                 if entry.metadata.as_ref().is_some_and(Result::is_err) {
                     errors += 1;
                 }
             }
             Err(_) => errors += 1,
         }
-        let current = (walk.active_threads(), walk.threads_settled());
-        if current != state {
+        let current = (
+            walk.active_threads(),
+            walk.threads_settled(),
+            walk.thread_tuning_complete(),
+        );
+        if current != state || heartbeat.elapsed() >= Duration::from_secs(1) {
+            heartbeat = Instant::now();
             state = current;
             eprintln!(
-                "{},{},{},{entries},{errors}",
+                "{},{},{},{},{entries},{errors}",
                 start.elapsed().as_millis(),
                 state.0,
-                state.1
+                state.1,
+                state.2
             );
         }
     }
     println!(
-        "seconds={:.6} entries={entries} errors={errors} admitted={} retirement_settled={}",
+        "seconds={:.6} entries={entries} directories={directories} logical_bytes={logical_bytes} errors={errors} admitted={} retirement_settled={} tuning_complete={}",
         start.elapsed().as_secs_f64(),
         walk.active_threads(),
-        walk.threads_settled()
+        walk.threads_settled(),
+        walk.thread_tuning_complete()
     );
     Ok(())
 }
