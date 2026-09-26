@@ -1,0 +1,133 @@
+{
+  "root": "/Users/huntharo/github",
+  "sha256": "9b833a5a86c4becb5e3d0ff512c985e8fd60b25d01463ef02835e7618e55b058",
+  "rows": [
+    {
+      "label": "legacy16",
+      "args": [
+        "--threads",
+        "16",
+        "--thread-loss-percent",
+        "20"
+      ],
+      "wall_seconds": 2.502097332966514,
+      "cpu_seconds": 20.329264000000002,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    },
+    {
+      "label": "default16",
+      "args": [
+        "--threads",
+        "16"
+      ],
+      "wall_seconds": 2.785595166962594,
+      "cpu_seconds": 16.98567299999999,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    },
+    {
+      "label": "fixed8",
+      "args": [
+        "--threads",
+        "8",
+        "--fixed-threads"
+      ],
+      "wall_seconds": 2.748387834057212,
+      "cpu_seconds": 11.449807000000007,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    },
+    {
+      "label": "fixed8",
+      "args": [
+        "--threads",
+        "8",
+        "--fixed-threads"
+      ],
+      "wall_seconds": 2.3827593750320375,
+      "cpu_seconds": 10.627043,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    },
+    {
+      "label": "default16",
+      "args": [
+        "--threads",
+        "16"
+      ],
+      "wall_seconds": 2.694066541036591,
+      "cpu_seconds": 18.948996,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    },
+    {
+      "label": "legacy16",
+      "args": [
+        "--threads",
+        "16",
+        "--thread-loss-percent",
+        "20"
+      ],
+      "wall_seconds": 2.7397247499320656,
+      "cpu_seconds": 21.228500999999994,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    },
+    {
+      "label": "legacy16",
+      "args": [
+        "--threads",
+        "16",
+        "--thread-loss-percent",
+        "20"
+      ],
+      "wall_seconds": 2.9370502090314403,
+      "cpu_seconds": 21.700244999999995,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    },
+    {
+      "label": "default16",
+      "args": [
+        "--threads",
+        "16"
+      ],
+      "wall_seconds": 2.7626763329608366,
+      "cpu_seconds": 14.976374000000007,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    },
+    {
+      "label": "fixed8",
+      "args": [
+        "--threads",
+        "8",
+        "--fixed-threads"
+      ],
+      "wall_seconds": 2.61748079105746,
+      "cpu_seconds": 10.99308400000001,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "dbac49dc47fe48db30ebdf5098a1bd38b4b104e0f4cb2c50d183f60c14761ba1",
+      "stdout_line_count": 22
+    }
+  ],
+  "identical_output": true
+}

@@ -1,0 +1,785 @@
+{
+  "sha256": "8de9e63ad6cf4525c68fcbab0fe0b368f8602792ddef8eb899189db613359d93",
+  "rows": [
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 144162,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 238161,
+        "disk_read_bytes": 384999424,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 94895,
+        "runnable_seconds": 9.711632708333333,
+        "unix_syscalls": 358892
+      },
+      "proc_before": {
+        "context_switches": 5,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.00013341666666666667,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 7.527749999999999,
+      "thread_policy": "fixed",
+      "thread_transitions": [
+        {
+          "active": 8,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        }
+      ],
+      "threads": 8,
+      "user_seconds": 0.44308,
+      "voluntary_switches": 93994,
+      "wall_seconds": 2.001646833,
+      "label": "fixed8",
+      "outer_seconds": 2.0048410840099677
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 84417,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 155020,
+        "disk_read_bytes": 289165312,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 21398,
+        "runnable_seconds": 9.121995791666667,
+        "unix_syscalls": 127868
+      },
+      "proc_before": {
+        "context_switches": 10,
+        "disk_read_bytes": 16384,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.00049425,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 7.294787,
+      "thread_policy": "fixed",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.211507,
+      "voluntary_switches": 70593,
+      "wall_seconds": 4.114236958,
+      "label": "fixed16",
+      "outer_seconds": 4.1180290000047535
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 77709,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 150212,
+        "disk_read_bytes": 296947712,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 22441,
+        "runnable_seconds": 8.321267166666667,
+        "unix_syscalls": 126398
+      },
+      "proc_before": {
+        "context_switches": 6,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.00012829166666666666,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 6.669032,
+      "thread_policy": "legacy",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        },
+        {
+          "active": 15,
+          "elapsed_ms": 250,
+          "entries": 104000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 501,
+          "entries": 199000,
+          "settled": true
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.20430700000000002,
+      "voluntary_switches": 72497,
+      "wall_seconds": 4.312702542,
+      "label": "legacy16",
+      "outer_seconds": 4.315958542050794
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 59962,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 129805,
+        "disk_read_bytes": 286052352,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 22833,
+        "runnable_seconds": 6.565609833333333,
+        "unix_syscalls": 126066
+      },
+      "proc_before": {
+        "context_switches": 6,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.0001345,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 5.319896999999999,
+      "thread_policy": "throughput",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 250,
+          "entries": 105000,
+          "settled": false
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 256,
+          "entries": 108000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 507,
+          "entries": 213000,
+          "settled": true
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 760,
+          "entries": 258000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 1030,
+          "entries": 268000,
+          "settled": true
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 1295,
+          "entries": 278000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 1542,
+          "entries": 288000,
+          "settled": true
+        },
+        {
+          "active": 4,
+          "elapsed_ms": 1793,
+          "entries": 299000,
+          "settled": false
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.19284300000000001,
+      "voluntary_switches": 69837,
+      "wall_seconds": 4.105573,
+      "label": "throughput16",
+      "outer_seconds": 4.109055332955904
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 63049,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 141445,
+        "disk_read_bytes": 321081344,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 24848,
+        "runnable_seconds": 6.956424833333333,
+        "unix_syscalls": 126399
+      },
+      "proc_before": {
+        "context_switches": 7,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.0018287083333333332,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 5.624457,
+      "thread_policy": "throughput",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 254,
+          "entries": 92000,
+          "settled": false
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.194059,
+      "voluntary_switches": 78389,
+      "wall_seconds": 4.562210625,
+      "label": "throughput16",
+      "outer_seconds": 4.565429291920736
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 81668,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 154247,
+        "disk_read_bytes": 297259008,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 22127,
+        "runnable_seconds": 8.855069125,
+        "unix_syscalls": 126408
+      },
+      "proc_before": {
+        "context_switches": 6,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.00013379166666666666,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 6.866416999999999,
+      "thread_policy": "legacy",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        },
+        {
+          "active": 15,
+          "elapsed_ms": 255,
+          "entries": 104000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 507,
+          "entries": 181000,
+          "settled": true
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.200962,
+      "voluntary_switches": 72573,
+      "wall_seconds": 4.426790792,
+      "label": "legacy16",
+      "outer_seconds": 4.430164166959003
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 84664,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 155009,
+        "disk_read_bytes": 288026624,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 20052,
+        "runnable_seconds": 9.345416458333334,
+        "unix_syscalls": 126184
+      },
+      "proc_before": {
+        "context_switches": 26,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.0012158333333333333,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 7.178646,
+      "thread_policy": "fixed",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.205181,
+      "voluntary_switches": 70319,
+      "wall_seconds": 4.058518875,
+      "label": "fixed16",
+      "outer_seconds": 4.0620718750869855
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 142713,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 220194,
+        "disk_read_bytes": 317345792,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 93298,
+        "runnable_seconds": 9.71803425,
+        "unix_syscalls": 357778
+      },
+      "proc_before": {
+        "context_switches": 4,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 9.6e-05,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 7.654568,
+      "thread_policy": "fixed",
+      "thread_transitions": [
+        {
+          "active": 8,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        }
+      ],
+      "threads": 8,
+      "user_seconds": 0.436505,
+      "voluntary_switches": 77477,
+      "wall_seconds": 1.8792869589999999,
+      "label": "fixed8",
+      "outer_seconds": 1.8824625839479268
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 156740,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 240850,
+        "disk_read_bytes": 344506368,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 89719,
+        "runnable_seconds": 11.425939666666666,
+        "unix_syscalls": 341110
+      },
+      "proc_before": {
+        "context_switches": 6,
+        "disk_read_bytes": 16384,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.0004120416666666667,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 8.62068,
+      "thread_policy": "fixed",
+      "thread_transitions": [
+        {
+          "active": 8,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        }
+      ],
+      "threads": 8,
+      "user_seconds": 0.486678,
+      "voluntary_switches": 84104,
+      "wall_seconds": 2.105181917,
+      "label": "fixed8",
+      "outer_seconds": 2.108603874919936
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 277368,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 352926,
+        "disk_read_bytes": 309374976,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 71005,
+        "runnable_seconds": 20.158718,
+        "unix_syscalls": 384810
+      },
+      "proc_before": {
+        "context_switches": 31,
+        "disk_read_bytes": 16384,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.0022805,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 13.881656000000001,
+      "thread_policy": "fixed",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.534244,
+      "voluntary_switches": 75527,
+      "wall_seconds": 1.9495859580000001,
+      "label": "fixed16",
+      "outer_seconds": 1.9536103749414906
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 79904,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 152873,
+        "disk_read_bytes": 298860544,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 21155,
+        "runnable_seconds": 8.769831208333335,
+        "unix_syscalls": 126979
+      },
+      "proc_before": {
+        "context_switches": 5,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.0012238333333333333,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 7.06044,
+      "thread_policy": "legacy",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        },
+        {
+          "active": 15,
+          "elapsed_ms": 256,
+          "entries": 71000,
+          "settled": false
+        },
+        {
+          "active": 15,
+          "elapsed_ms": 261,
+          "entries": 73000,
+          "settled": true
+        },
+        {
+          "active": 14,
+          "elapsed_ms": 512,
+          "entries": 169000,
+          "settled": false
+        },
+        {
+          "active": 14,
+          "elapsed_ms": 519,
+          "entries": 172000,
+          "settled": true
+        },
+        {
+          "active": 15,
+          "elapsed_ms": 792,
+          "entries": 254000,
+          "settled": true
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.211635,
+      "voluntary_switches": 72964,
+      "wall_seconds": 4.719059583,
+      "label": "legacy16",
+      "outer_seconds": 4.721960333059542
+    },
+    {
+      "count": {
+        "allocated_bytes": 190083641344,
+        "bytes": 189224128930,
+        "devices": [
+          16777234
+        ],
+        "dirs": 13837,
+        "entries": 446039,
+        "errors": 0
+      },
+      "involuntary_switches": 63168,
+      "passes": 1,
+      "proc_after": {
+        "context_switches": 136970,
+        "disk_read_bytes": 302190592,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 22953,
+        "runnable_seconds": 7.25769575,
+        "unix_syscalls": 127078
+      },
+      "proc_before": {
+        "context_switches": 25,
+        "disk_read_bytes": 0,
+        "disk_write_bytes": 0,
+        "mach_syscalls": 126,
+        "runnable_seconds": 0.0026269166666666667,
+        "unix_syscalls": 159
+      },
+      "roots": {},
+      "strategy": "adaptive",
+      "system_seconds": 5.760138,
+      "thread_policy": "throughput",
+      "thread_transitions": [
+        {
+          "active": 16,
+          "elapsed_ms": 0,
+          "entries": 0,
+          "settled": true
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 252,
+          "entries": 102000,
+          "settled": false
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 256,
+          "entries": 104000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 510,
+          "entries": 201000,
+          "settled": true
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 797,
+          "entries": 257000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 1025,
+          "entries": 265000,
+          "settled": true
+        },
+        {
+          "active": 8,
+          "elapsed_ms": 1281,
+          "entries": 274000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 1552,
+          "entries": 284000,
+          "settled": true
+        },
+        {
+          "active": 4,
+          "elapsed_ms": 1786,
+          "entries": 294000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 2045,
+          "entries": 305000,
+          "settled": true
+        },
+        {
+          "active": 4,
+          "elapsed_ms": 2299,
+          "entries": 316000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 2553,
+          "entries": 329000,
+          "settled": true
+        },
+        {
+          "active": 2,
+          "elapsed_ms": 2795,
+          "entries": 343000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 3051,
+          "entries": 357000,
+          "settled": true
+        },
+        {
+          "active": 2,
+          "elapsed_ms": 3312,
+          "entries": 371000,
+          "settled": true
+        },
+        {
+          "active": 16,
+          "elapsed_ms": 3554,
+          "entries": 385000,
+          "settled": true
+        },
+        {
+          "active": 1,
+          "elapsed_ms": 3806,
+          "entries": 400000,
+          "settled": false
+        }
+      ],
+      "threads": 16,
+      "user_seconds": 0.200662,
+      "voluntary_switches": 73777,
+      "wall_seconds": 4.388877083,
+      "label": "throughput16",
+      "outer_seconds": 4.393048000056297
+    }
+  ]
+}

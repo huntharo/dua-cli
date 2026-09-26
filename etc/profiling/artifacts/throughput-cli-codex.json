@@ -1,0 +1,133 @@
+{
+  "root": "/Users/huntharo/github/codex/codex-rs",
+  "sha256": "9b833a5a86c4becb5e3d0ff512c985e8fd60b25d01463ef02835e7618e55b058",
+  "rows": [
+    {
+      "label": "legacy16",
+      "args": [
+        "--threads",
+        "16",
+        "--thread-loss-percent",
+        "20"
+      ],
+      "wall_seconds": 2.5831892079440877,
+      "cpu_seconds": 13.584786,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    },
+    {
+      "label": "default16",
+      "args": [
+        "--threads",
+        "16"
+      ],
+      "wall_seconds": 4.518268208019435,
+      "cpu_seconds": 5.695934000000001,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    },
+    {
+      "label": "fixed8",
+      "args": [
+        "--threads",
+        "8",
+        "--fixed-threads"
+      ],
+      "wall_seconds": 1.599604208022356,
+      "cpu_seconds": 7.748778999999999,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    },
+    {
+      "label": "fixed8",
+      "args": [
+        "--threads",
+        "8",
+        "--fixed-threads"
+      ],
+      "wall_seconds": 1.898780999938026,
+      "cpu_seconds": 8.399197000000004,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    },
+    {
+      "label": "default16",
+      "args": [
+        "--threads",
+        "16"
+      ],
+      "wall_seconds": 4.466078000026755,
+      "cpu_seconds": 6.513891000000001,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    },
+    {
+      "label": "legacy16",
+      "args": [
+        "--threads",
+        "16",
+        "--thread-loss-percent",
+        "20"
+      ],
+      "wall_seconds": 4.636548749986105,
+      "cpu_seconds": 7.476315999999997,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    },
+    {
+      "label": "legacy16",
+      "args": [
+        "--threads",
+        "16",
+        "--thread-loss-percent",
+        "20"
+      ],
+      "wall_seconds": 4.397595499991439,
+      "cpu_seconds": 6.916598999999998,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    },
+    {
+      "label": "default16",
+      "args": [
+        "--threads",
+        "16"
+      ],
+      "wall_seconds": 4.684449875028804,
+      "cpu_seconds": 6.478206000000007,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    },
+    {
+      "label": "fixed8",
+      "args": [
+        "--threads",
+        "8",
+        "--fixed-threads"
+      ],
+      "wall_seconds": 1.8258813749998808,
+      "cpu_seconds": 8.684405999999996,
+      "returncode": 0,
+      "stderr": "",
+      "stdout_sha256": "047cbeef4ee809a3d8e95342543a3e8f56ce6635e0745d53a67b722f38ea34d0",
+      "stdout_line_count": 128
+    }
+  ],
+  "identical_output": true
+}

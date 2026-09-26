@@ -239,7 +239,7 @@ impl IgnorePatterns {
 /// Configures a filesystem walk, including output and formatting options.
 #[derive(Clone)]
 pub struct WalkOptions {
-    /// Initial filesystem worker count; fixed when `metadata_options.adaptive_threads` is `None`.
+    /// Initial filesystem worker count; fixed when both adaptive policies are disabled.
     pub threads: usize,
     /// If `true`, count every hard-link occurrence independently.
     pub count_hard_links: bool,

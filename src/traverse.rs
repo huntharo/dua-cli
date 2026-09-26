@@ -1637,6 +1637,9 @@ fn walk_clean_candidates(
         if let Some(adaptive) = &mut sizing_options.adaptive_threads {
             adaptive.max_threads = adaptive.max_threads.saturating_sub(1).max(1);
         }
+        if let Some(throughput) = &mut sizing_options.throughput_threads {
+            throughput.max_threads = throughput.max_threads.saturating_sub(1).max(1);
+        }
         let (mut roots, walk) = crate::walk::stream_roots(
             options.threads - 1,
             crate::walk::Order::ParentFirst,

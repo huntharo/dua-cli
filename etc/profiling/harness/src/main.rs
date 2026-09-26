@@ -20,6 +20,10 @@ struct Config {
     calibrate: bool,
     #[serde(default = "default_strategy")]
     strategy: String,
+    #[serde(default)]
+    thread_policy: String,
+    #[serde(default)]
+    thread_interval_ms: Option<u64>,
 }
 fn default_strategy() -> String {
     "adaptive".into()
@@ -140,6 +144,25 @@ fn main() {
     }
     let mut opt = dua_core::Options::default();
     opt.skip_metadata = c.skip_metadata;
+    let interval = Duration::from_millis(c.thread_interval_ms.unwrap_or(250));
+    match c.thread_policy.as_str() {
+        "" | "fixed" => {}
+        "legacy" => {
+            opt.adaptive_threads = Some(dua_core::AdaptiveThreads {
+                baseline_interval: interval,
+                adjustment_interval: interval,
+                ..Default::default()
+            });
+        }
+        "throughput" => {
+            opt.throughput_threads = Some(dua_core::ThroughputThreads {
+                baseline_interval: interval,
+                adjustment_interval: interval,
+                ..Default::default()
+            });
+        }
+        other => panic!("unknown thread policy {other}"),
+    }
     opt.macos_metadata_strategy = match c.strategy.as_str() {
         "adaptive" => dua_core::MacosMetadataStrategy::Adaptive,
         "bulk" => dua_core::MacosMetadataStrategy::Bulk,
@@ -153,6 +176,7 @@ fn main() {
     let mut total = Count::default();
     let mut passes = 0;
     let mut roots = BTreeMap::new();
+    let mut thread_transitions = Vec::new();
     loop {
         if !c.partitions.is_empty() {
             let results = std::thread::scope(|scope| {
@@ -209,15 +233,25 @@ fn main() {
                 total.devices.extend(count.devices.iter().copied());
             }
         } else {
-            for (_, e) in dua_core::walk_roots(
+            let mut walk = dua_core::walk_roots(
                 c.roots.iter().cloned().enumerate(),
                 c.threads,
                 dua_core::Order::Completion,
                 opt,
                 |_, _| true,
-            ) {
+            );
+            let mut last_threads = (walk.active_threads(), walk.threads_settled());
+            thread_transitions.push(serde_json::json!({"elapsed_ms":start.elapsed().as_millis(),"active":last_threads.0,"settled":last_threads.1,"entries":total.entries}));
+            while let Some((_, e)) = walk.next() {
                 if let dua_core::RootEvent::Entry(e) = e {
                     total.add(e)
+                }
+                if total.entries % 1000 == 0 {
+                    let state = (walk.active_threads(), walk.threads_settled());
+                    if state != last_threads {
+                        last_threads = state;
+                        thread_transitions.push(serde_json::json!({"elapsed_ms":start.elapsed().as_millis(),"active":state.0,"settled":state.1,"entries":total.entries}));
+                    }
                 }
             }
         }
@@ -231,6 +265,6 @@ fn main() {
     let proc_after = proc_stats();
     println!(
         "{}",
-        serde_json::json!({"strategy":c.strategy,"proc_before":proc_before,"proc_after":proc_after,"threads":c.threads,"passes":passes,"wall_seconds":elapsed,"user_seconds":seconds(after.ru_utime)-seconds(before.ru_utime),"system_seconds":seconds(after.ru_stime)-seconds(before.ru_stime),"voluntary_switches":after.ru_nvcsw-before.ru_nvcsw,"involuntary_switches":after.ru_nivcsw-before.ru_nivcsw,"count":total,"roots":roots})
+        serde_json::json!({"strategy":c.strategy,"thread_policy":c.thread_policy,"thread_transitions":thread_transitions,"proc_before":proc_before,"proc_after":proc_after,"threads":c.threads,"passes":passes,"wall_seconds":elapsed,"user_seconds":seconds(after.ru_utime)-seconds(before.ru_utime),"system_seconds":seconds(after.ru_stime)-seconds(before.ru_stime),"voluntary_switches":after.ru_nvcsw-before.ru_nvcsw,"involuntary_switches":after.ru_nivcsw-before.ru_nivcsw,"count":total,"roots":roots})
     );
 }
