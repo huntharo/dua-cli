@@ -603,7 +603,10 @@ mod tests {
         }
 
         for skip_metadata in [false, true] {
-            let options = crate::Options { skip_metadata };
+            let options = crate::Options {
+                skip_metadata,
+                ..crate::Options::default()
+            };
             let entry = Entry::from_path(&link, options).unwrap();
             assert!(entry.file_type.is_symlink());
             assert!(!entry.file_type.is_dir());
@@ -671,7 +674,10 @@ mod tests {
             let entries = crate::ReadDir::open(
                 Arc::from(path.as_path()),
                 1,
-                crate::Options { skip_metadata },
+                crate::Options {
+                    skip_metadata,
+                    ..crate::Options::default()
+                },
             )
             .unwrap()
             .map(|entry| entry.unwrap().file_name)
@@ -699,7 +705,10 @@ mod tests {
             let entries = crate::ReadDir::open(
                 Arc::from(ordinary_child.as_path()),
                 1,
-                crate::Options { skip_metadata },
+                crate::Options {
+                    skip_metadata,
+                    ..crate::Options::default()
+                },
             )
             .unwrap()
             .map(|entry| entry.unwrap().file_name)
@@ -718,7 +727,10 @@ mod tests {
             let entries = crate::ReadDir::open(
                 Arc::from(path.as_path()),
                 1,
-                crate::Options { skip_metadata },
+                crate::Options {
+                    skip_metadata,
+                    ..crate::Options::default()
+                },
             )
             .unwrap()
             .map(|entry| entry.unwrap().file_name)
