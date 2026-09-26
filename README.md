@@ -2,7 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/dua-cli.svg)](https://crates.io/crates/dua-cli)
 [![Packaging status](https://repology.org/badge/tiny-repos/dua-cli.svg)](https://repology.org/project/dua-cli/badges)
 
-**dua** (-> _Disk Usage Analyzer_) is a tool to conveniently learn about the usage of disk space of a given directory. It's parallel by default and will max out your SSD, providing relevant information as fast as possible. Optionally delete superfluous data, and do so more quickly than `rm`.
+**dua** (-> _Disk Usage Analyzer_) is a tool to conveniently learn about the usage of disk space of a given directory. It automatically tunes filesystem worker concurrency to the throughput of your storage. Optionally delete superfluous data, and do so more quickly than `rm`.
 
 Run `dua i` to launch the [interactive mode](#interactive-mode) for exploring and deleting files.
 
@@ -175,6 +175,36 @@ dua *
 # learn about additional functionality
 dua aggregate --help
 ```
+
+Scans start with one active worker and measure its throughput for 10 seconds. Adaptive
+thread tuning then tries 2, 4, 8, and more workers, up to the available logical
+processors. An increase is retained when each added worker contributes at least
+60% of the initial single-worker throughput. The controller continues checking
+throughput and adjusts the active worker count as the scan progresses. The pool
+allocates its maximum number of threads up front and parks inactive workers.
+Short scans can finish before the initial measurement ends. Measurements include
+consumer backpressure and can vary with directory shape, cache state, and storage
+latency. Short intervals can cause repeated probes and reversals; fixed counts can
+finish a known workload faster. Downshifts take effect as in-flight jobs finish,
+which can also affect the next measurement.
+
+Use these traversal options to tune adaptive scans:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--max-threads N` | Available logical processors | Upper bound for adaptive workers; at least 1. |
+| `--thread-baseline-seconds N` | 10 | Initial single-worker measurement duration; at least 1 second. |
+| `--thread-adjustment-seconds N` | 10 | Duration between throughput evaluations; at least 1 second. |
+| `--thread-efficiency PERCENT` | 60 | Minimum marginal throughput per added worker, from 0 to 100. |
+
+For example, `dua --max-threads 8 --thread-efficiency 70 ~/github` limits adaptive
+scanning to eight workers. These options also accept the environment variables
+`DUA_MAX_THREADS`, `DUA_THREAD_BASELINE_SECONDS`, `DUA_THREAD_ADJUSTMENT_SECONDS`,
+and `DUA_THREAD_EFFICIENCY`.
+
+To use a fixed worker count, pass `--threads N` (or set `DUA_THREADS`). A value of
+`1` keeps traversal single-threaded; `0` uses all logical processors. Explicit
+`--threads` disables adaptive tuning, including the adaptive options above.
 
 On macOS, the `--deduplicate-apfs-clones` traversal option counts fully shared
 APFS file clones only once in aggregate and interactive runs. It is opt-in

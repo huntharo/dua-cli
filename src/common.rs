@@ -239,7 +239,7 @@ impl IgnorePatterns {
 /// Configures a filesystem walk, including output and formatting options.
 #[derive(Clone)]
 pub struct WalkOptions {
-    /// The amount of filesystem worker threads to use.
+    /// Fixed filesystem worker count, overridden by `metadata_options.adaptive_threads`.
     pub threads: usize,
     /// If `true`, count every hard-link occurrence independently.
     pub count_hard_links: bool,
@@ -252,7 +252,7 @@ pub struct WalkOptions {
     /// Gitignore-style patterns whose matches are left out of the traversal entirely.
     /// `None` if no pattern was configured.
     pub ignore_patterns: Option<IgnorePatterns>,
-    /// Platform-specific metadata requested during traversal.
+    /// Platform-specific metadata and optional adaptive worker scheduling.
     pub metadata_options: crate::TraversalOptions,
 }
 
