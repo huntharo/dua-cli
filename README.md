@@ -2,7 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/dua-cli.svg)](https://crates.io/crates/dua-cli)
 [![Packaging status](https://repology.org/badge/tiny-repos/dua-cli.svg)](https://repology.org/project/dua-cli/badges)
 
-**dua** (-> _Disk Usage Analyzer_) is a tool to conveniently learn about the usage of disk space of a given directory. It automatically tunes filesystem worker concurrency to the throughput of your storage. Optionally delete superfluous data, and do so more quickly than `rm`.
+**dua** (-> _Disk Usage Analyzer_) is a tool to conveniently learn about the usage of disk space of a given directory. It's parallel by default and will max out your SSD, providing relevant information as fast as possible. Optionally delete superfluous data, and do so more quickly than `rm`.
 
 Run `dua i` to launch the [interactive mode](#interactive-mode) for exploring and deleting files.
 
@@ -175,111 +175,6 @@ dua *
 # learn about additional functionality
 dua aggregate --help
 ```
-
-Scans start with the requested `--threads N` workers. Omitted or `0` uses the
-available logical processors. By default, the controller searches for fewer workers
-that retain **80% of initially measured useful entry throughput**. It first probes
-half the initial count, halves again when accepted, and refines the first failing
-bracket. Each count needs two passing windows out of at most three, measured at that count.
-The initial reference is measured once and reused: the search moves directly between
-candidates without returning to the initial count for reference measurements.
-Successive reductions do not compound the 80% allowance.
-
-A separate system-wide CPU limit defaults to **80% of total logical-processor
-capacity**, including other applications. It samples every 500 ms, halves the
-admitted count after two above-limit samples, and keeps at least one worker.
-After four samples below 75% (five percentage points below the configured limit),
-it restores one worker at a time, up to the throughput controller's target.
-The limiter remains active after throughput tuning finishes. Throughput windows
-are discarded while CPU pressure limits workers; no high-count reference reset
-is performed. Downshifts wait for job boundaries. Other applications alone can
-exceed the limit, so this is best effort, not a hard machine-wide CPU guarantee.
-
-The initial reference and candidate windows default to 250 ms each. A candidate window starts
-only after retired workers finish their current jobs and acknowledge parking.
-Their queues remain stealable. Large directory jobs can delay retirement, and a
-short scan may finish before the search settles. Empty, completed, or substantially
-consumer-backpressured windows cannot accept a reduction. Inconclusive retries are
-bounded; an inconclusive candidate is rejected and the bracket is refined. Upward
-steps stay within the bracket; even returning to the initial count requires first
-rejecting its adjacent lower count. The pool allocates the
-initial count up front and parks retired workers.
-
-These are sequential measurements of a changing workload. Directory shape, cache
-state, storage latency and consumer speed can make the initial reference stale; this is not a
-measurement of disk utilization or a guarantee of the optimal count. A streaming
-pool shares a search across roots; restarting a core `Walk` resets the search.
-
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `--threads N` | Available logical processors | Initial count; `0` also selects available logical processors. |
-| `--max-threads N` | No additional cap | Cap the initial adaptive count; at least 1. |
-| `--thread-baseline-ms N` | 250 | Duration of the single initial reference measurement. |
-| `--thread-adjustment-ms N` | 250 | Candidate measurement duration after retirement. |
-| `--thread-throughput-percent PERCENT` | 80 | Minimum candidate/reference throughput percentage, from 0 to 100. |
-| `--thread-system-cpu-percent PERCENT` | 80 | Whole-machine CPU limit; 0 disables it. Fixed/legacy policies ignore it. |
-| `--thread-loss-percent PERCENT` | Unset | Explicitly select the legacy marginal-loss policy below. |
-| `--fixed-threads` | Off | Disable both controllers and ignore adaptive caps and thresholds. |
-
-For example, `dua --threads 16 ~/github` starts at sixteen and first probes eight.
-`dua --fixed-threads --threads 8 ~/github` holds eight. Options also accept
-`DUA_THREADS`, `DUA_MAX_THREADS`, `DUA_THREAD_BASELINE_MS`, `DUA_THREAD_ADJUSTMENT_MS`,
-`DUA_THREAD_THROUGHPUT_PERCENT`, `DUA_THREAD_SYSTEM_CPU_PERCENT`, `DUA_THREAD_LOSS_PERCENT`, and `DUA_FIXED_THREADS=true`.
-Global values override the same subcommand option; defaults apply after merging.
-An explicit throughput percentage takes precedence over an explicit loss percentage.
-
-The legacy policy remains available with `--thread-loss-percent 20`. It probes
-`n - 1` and accepts only `T_n - T_(n-1) < 0.20 * T_n / n`, with strict inequality,
-a refreshed accepted reference, and rollback/hold at the first rejection. Its
-`AdaptiveThreads` API and defaults are unchanged.
-
-For core API callers, both `Options::adaptive_threads` and
-`Options::throughput_threads` default to `None`, preserving fixed concurrency.
-`Some(ThroughputThreads::default())` enables the new 80% search and takes precedence
-if both are supplied. Its `system_cpu_limit` defaults to `Some(0.80)`; `None` disables
-the resource limit. `Some(AdaptiveThreads::default())` selects the legacy formula.
-Core intervals use `Duration` and percentages use fractions. The constructor's
-thread count is the initial count, bounded by the selected policy's `max_threads`.
-Core count zero becomes one; CLI zero selects available logical processors.
-
-To compare the CLI against fixed 4/8/16 on the same tree, build once, then run these
-commands serially (repeat with rotated ordering to expose cache effects):
-
-```sh
-cargo build --release
-/usr/bin/time -l target/release/dua --fixed-threads --threads 4 ~/github
-/usr/bin/time -l target/release/dua --fixed-threads --threads 8 ~/github
-/usr/bin/time -l target/release/dua --fixed-threads --threads 16 ~/github
-/usr/bin/time -l target/release/dua --threads 16 ~/github
-```
-
-`/usr/bin/time -l` is the macOS form; on Linux use `/usr/bin/time -v`. A separate core
-harness records elapsed milliseconds, admitted count, retirement status, entries,
-and errors. It refuses paths outside `~/github` unless `--allow-home` is supplied:
-
-```sh
-cargo build --release -p dua-core --example thread_probe
-/usr/bin/time -l target/release/examples/thread_probe throughput 16 ~/github 250 250 80
-/usr/bin/time -l target/release/examples/thread_probe fixed 4 ~/github
-/usr/bin/time -l target/release/examples/thread_probe fixed 8 ~/github
-/usr/bin/time -l target/release/examples/thread_probe fixed 16 ~/github
-```
-
-Harness telemetry is observed as entries arrive, so a blocked iterator can delay
-or miss a short transition. An admitted count is provisional during a probe;
-`retirement_settled=false` means former workers have not all acknowledged retirement.
-
-The controller and longer-walk measurement procedure are documented in
-[THREAD-TUNING.md](etc/profiling/THREAD-TUNING.md).
-`thread_tuning_complete()` separately reports whether the search has finished.
-These getters are separate concurrent observations. This harness measures raw core
-traversal with telemetry overhead, not CLI aggregation. Earlier comparisons did not record total system CPU. The operator reported heavy
-concurrent work, so a slow one-worker traversal alone cannot distinguish a poor
-throughput choice from appropriate backoff under external contention. The new
-`--cpu-log PATH` option records system CPU independently of entry delivery;
-`system_cpu_limited()` identifies resource-driven admission. See the report for
-historical measurements and current monitoring validation. PR #5 remains draft
-pending measurements with system-load context.
 
 On macOS, the `--deduplicate-apfs-clones` traversal option counts fully shared
 APFS file clones only once in aggregate and interactive runs. It is opt-in
