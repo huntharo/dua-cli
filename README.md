@@ -177,57 +177,55 @@ dua aggregate --help
 ```
 
 Scans start with the requested `--threads N` workers. Omitted or `0` uses the
-available logical processors. After measuring aggregate entry throughput for 250 ms,
-adaptive tuning removes **one** worker and measures again for 250 ms. For an accepted
-count `n` and throughput `T_n` (entries/second), the projected loss is `T_n / n`.
-The candidate `n - 1` is retained only when:
+available logical processors. By default, the controller searches for fewer workers
+that retain **80% of recently measured useful entry throughput**. It first probes
+half the initial count, halves again when accepted, and refines the first failing
+bracket. Each count needs two passing comparisons out of at most three; a single
+noisy failure no longer ends the search. Each comparison refreshes its reference at
+the initial count, so successive reductions do not compound an 80% allowance.
 
-```text
-T_n - T_(n-1) < 0.20 * T_n / n
-```
+Reference and candidate windows default to 250 ms each. A candidate window starts
+only after retired workers finish their current jobs and acknowledge parking.
+Their queues remain stealable. Large directory jobs can delay retirement, and a
+short scan may finish before the search settles. Empty, completed, or substantially
+consumer-backpressured windows cannot accept a reduction. Inconclusive retries are
+bounded; the controller returns to the last accepted count. The pool allocates the
+initial count up front and parks retired workers.
 
-An improvement is accepted; equality is rejected. For example, at 16 workers and
-1,600 entries/second, the projected loss is 100 entries/second and the allowed loss
-is strictly less than 20 entries/second (1.25% of aggregate throughput). Each
-accepted candidate supplies the next reference rate. The first failed probe
-restores the last accepted count and stops reducing for this traversal. The floor
-is one worker; there is no preferred count or 4–8-worker clamp.
-
-A candidate's measurement starts only after retiring workers acknowledge a job
-boundary. Their in-flight work finishes and is excluded from the sample, so each
-step takes retirement time **plus** the measurement interval. Descendants on parked
-workers' queues remain stealable. Zero-entry baseline windows wait for work;
-zero-entry candidate windows restore the accepted count and stop tuning. The pool
-allocates the initial count up front and parks retired workers.
-
-These are sequential measurements, not a controlled comparison of identical work.
-Consumer backpressure, idle streaming periods, directory shape, cache state, and
-storage latency can affect decisions. A short scan may finish before any probe;
-a noisy probe can end the search early. The selected count is not guaranteed to be
-optimal. A streaming pool shares one search across its roots; restarting a core
-`Walk` resets the search at the next controller wake, reusing its allocated workers.
+These are sequential measurements of a changing workload. Directory shape, cache
+state, storage latency and consumer speed can affect the result; this is not a
+measurement of disk utilization or a guarantee of the optimal count. A streaming
+pool shares a search across roots; restarting a core `Walk` resets the search.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--threads N` | Available logical processors | Initial count; `0` also selects available logical processors. |
-| `--max-threads N` | No additional cap | Cap the initial adaptive count; at least 1. Does not raise a smaller requested count. |
-| `--thread-baseline-ms N` | 250 | Initial measurement duration in milliseconds; at least 1. |
-| `--thread-adjustment-ms N` | 250 | Candidate measurement duration after retirement, in milliseconds; at least 1. |
-| `--thread-loss-percent PERCENT` | 20 | Allowed fraction of projected loss `T_n/n`, from 0 to 100; strict inequality. |
-| `--fixed-threads` | Off | Disable adaptation; keep the requested/default count. Adaptive caps, intervals, and threshold are ignored. |
+| `--max-threads N` | No additional cap | Cap the initial adaptive count; at least 1. |
+| `--thread-baseline-ms N` | 250 | Duration of each reference measurement. |
+| `--thread-adjustment-ms N` | 250 | Candidate measurement duration after retirement. |
+| `--thread-throughput-percent PERCENT` | 80 | Minimum candidate/reference throughput percentage, from 0 to 100. |
+| `--thread-loss-percent PERCENT` | Unset | Explicitly select the legacy marginal-loss policy below. |
+| `--fixed-threads` | Off | Disable both controllers and ignore adaptive caps and thresholds. |
 
-For example, `dua --threads 16 --max-threads 8 ~/github` starts at eight workers and
-probes downward. `dua --fixed-threads --threads 8 ~/github` holds eight workers.
-Options also accept `DUA_THREADS`, `DUA_MAX_THREADS`, `DUA_THREAD_BASELINE_MS`,
-`DUA_THREAD_ADJUSTMENT_MS`, `DUA_THREAD_LOSS_PERCENT`, and `DUA_FIXED_THREADS=true`.
-When an option is specified globally and on a subcommand, the global value wins;
-`--fixed-threads` on either disables tuning. Defaults apply after that merge.
+For example, `dua --threads 16 ~/github` starts at sixteen and first probes eight.
+`dua --fixed-threads --threads 8 ~/github` holds eight. Options also accept
+`DUA_THREADS`, `DUA_MAX_THREADS`, `DUA_THREAD_BASELINE_MS`, `DUA_THREAD_ADJUSTMENT_MS`,
+`DUA_THREAD_THROUGHPUT_PERCENT`, `DUA_THREAD_LOSS_PERCENT`, and `DUA_FIXED_THREADS=true`.
+Global values override the same subcommand option; defaults apply after merging.
+An explicit throughput percentage takes precedence over an explicit loss percentage.
 
-For API callers, `Options::adaptive_threads = Some(AdaptiveThreads::default())`
-enables tuning from the walk constructor's thread argument, capped by
-`AdaptiveThreads::max_threads`. `None` keeps that argument fixed. Core durations
-use `Duration`, and `loss_threshold` uses a fraction (`0.20`, not `20`). Core count
-zero becomes one; CLI count zero resolves to available logical processors.
+The legacy policy remains available with `--thread-loss-percent 20`. It probes
+`n - 1` and accepts only `T_n - T_(n-1) < 0.20 * T_n / n`, with strict inequality,
+a refreshed accepted reference, and rollback/hold at the first rejection. Its
+`AdaptiveThreads` API and defaults are unchanged.
+
+For core API callers, both `Options::adaptive_threads` and
+`Options::throughput_threads` default to `None`, preserving fixed concurrency.
+`Some(ThroughputThreads::default())` enables the new 80% search and takes precedence
+if both are supplied. `Some(AdaptiveThreads::default())` selects the legacy formula.
+Core intervals use `Duration` and percentages use fractions. The constructor's
+thread count is the initial count, bounded by the selected policy's `max_threads`.
+Core count zero becomes one; CLI zero selects available logical processors.
 
 To compare the CLI against fixed 4/8/16 on the same tree, build once, then run these
 commands serially (repeat with rotated ordering to expose cache effects):
@@ -242,11 +240,11 @@ cargo build --release
 
 `/usr/bin/time -l` is the macOS form; on Linux use `/usr/bin/time -v`. A separate core
 harness records elapsed milliseconds, admitted count, retirement status, entries,
-and errors. It refuses paths outside `~/github`:
+and errors. It refuses paths outside `~/github` unless `--allow-home` is supplied:
 
 ```sh
 cargo build --release -p dua-core --example thread_probe
-/usr/bin/time -l target/release/examples/thread_probe adaptive 16 ~/github 250 250 20
+/usr/bin/time -l target/release/examples/thread_probe throughput 16 ~/github 250 250 80
 /usr/bin/time -l target/release/examples/thread_probe fixed 4 ~/github
 /usr/bin/time -l target/release/examples/thread_probe fixed 8 ~/github
 /usr/bin/time -l target/release/examples/thread_probe fixed 16 ~/github
@@ -255,7 +253,11 @@ cargo build --release -p dua-core --example thread_probe
 Harness telemetry is observed as entries arrive, so a blocked iterator can delay
 or miss a short transition. An admitted count is provisional during a probe;
 `retirement_settled=false` means former workers have not all acknowledged retirement.
-The two getters are separate concurrent observations. This harness measures raw core
+
+The controller and longer-walk measurement procedure are documented in
+[THREAD-TUNING.md](etc/profiling/THREAD-TUNING.md).
+`thread_tuning_complete()` separately reports whether the search has finished.
+These getters are separate concurrent observations. This harness measures raw core
 traversal with telemetry overhead, not CLI aggregation. No real-tree performance
 claim is implied by the algorithm or its synthetic correctness tests.
 

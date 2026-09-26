@@ -115,7 +115,7 @@ pub struct TraversalArgs {
     reason = "independent command-line switches map directly to booleans"
 )]
 pub struct ScanArgs {
-    /// Initial worker count; remove one worker per accepted throughput probe.
+    /// Initial worker count; adaptive tuning reduces it after throughput probes.
     /// Omitted or 0 uses available logical processors. Use --fixed-threads to disable tuning.
     #[clap(
         short = 't',
@@ -126,7 +126,7 @@ pub struct ScanArgs {
     pub threads: Option<usize>,
 
     /// Disable adaptive tuning and keep --threads (or its default) fixed.
-    /// Adaptive caps, intervals, and loss threshold are ignored in this mode.
+    /// Adaptive caps, intervals, and thresholds are ignored in this mode.
     #[clap(long, env = "DUA_FIXED_THREADS", help_heading = "Traversal Options")]
     pub fixed_threads: bool,
 
@@ -157,7 +157,7 @@ pub struct ScanArgs {
     )]
     pub thread_adjustment_ms: Option<u64>,
 
-    /// Accept n-1 only if loss < PERCENT/100 * `T_n/n` [default: 20].
+    /// Select legacy tuning: accept n-1 only if loss < PERCENT/100 * `T_n/n`.
     /// `T_n` is aggregate entries/second at accepted count n. Equality rejects; first rejection
     /// restores n and stops tuning. Each accepted candidate supplies the next reference rate.
     #[clap(
@@ -168,6 +168,18 @@ pub struct ScanArgs {
         help_heading = "Traversal Options"
     )]
     pub thread_loss_percent: Option<f64>,
+
+    /// Coarse count reduction retaining PERCENT of recent entries/second [default: 80].
+    /// Halve, retry adjacent comparisons, then refine. This measures throughput, not disk usage.
+    /// Uses the same cap and intervals; takes precedence over --thread-loss-percent.
+    #[clap(
+        long,
+        env = "DUA_THREAD_THROUGHPUT_PERCENT",
+        value_name = "PERCENT",
+        value_parser = parse_percentage,
+        help_heading = "Traversal Options"
+    )]
+    pub thread_throughput_percent: Option<f64>,
 
     /// Display apparent size instead of disk usage.
     #[clap(
@@ -253,6 +265,7 @@ pub struct StackArgs {
             "thread_baseline_ms",
             "thread_adjustment_ms",
             "thread_loss_percent",
+            "thread_throughput_percent",
             "apparent_size",
             "count_hard_links",
             "stay_on_filesystem",
@@ -317,6 +330,7 @@ pub enum Command {
                 "thread_baseline_ms",
                 "thread_adjustment_ms",
                 "thread_loss_percent",
+                "thread_throughput_percent",
                 "apparent_size",
                 "count_hard_links",
                 "stay_on_filesystem",
@@ -415,6 +429,7 @@ pub enum Command {
                 "thread_baseline_ms",
                 "thread_adjustment_ms",
                 "thread_loss_percent",
+                "thread_throughput_percent",
                 "apparent_size",
                 "count_hard_links",
                 "stay_on_filesystem",
@@ -498,6 +513,9 @@ mod tests {
             ("--thread-loss-percent", "101"),
             ("--thread-loss-percent", "NaN"),
             ("--thread-loss-percent", "inf"),
+            ("--thread-throughput-percent", "101"),
+            ("--thread-throughput-percent", "NaN"),
+            ("--thread-throughput-percent", "inf"),
         ] {
             assert!(Args::try_parse_from(["dua", flag, invalid]).is_err());
         }
@@ -519,6 +537,7 @@ mod tests {
                 "--thread-baseline-ms",
                 "--thread-adjustment-ms",
                 "--thread-loss-percent",
+                "--thread-throughput-percent",
             ] {
                 let error =
                     Args::try_parse_from(["dua", command, "--import", "scan.dua", flag, "2"])

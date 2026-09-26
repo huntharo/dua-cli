@@ -54,6 +54,247 @@ impl AdaptiveThreads {
     }
 }
 
+/// Opt-in coarse search for fewer workers retaining recent useful throughput.
+///
+/// Probe half the accepted count, then bisect the first failing bracket. Each candidate
+/// needs two passing comparisons out of at most three. Every comparison measures the
+/// initial count again immediately before the candidate, so losses do not compound as
+/// counts fall and one noisy rejection does not end the search. At most logarithmically
+/// many candidate counts are tested; the final count is held until the walk restarts.
+///
+/// Measurements begin after retirement acknowledgements. Empty, completed, or substantially
+/// consumer-backpressured windows cannot accept a reduction. Three inconclusive windows
+/// abandon the search at the last accepted count. Initial empty windows wait for work.
+/// The target describes observed entries/second, not disk utilization. Changing workloads
+/// can still bias comparisons; this bounded search does not guarantee a global optimum.
+#[derive(Clone, Copy, Debug)]
+pub struct ThroughputThreads {
+    /// Cap on initial workers. Zero becomes one; workers never exceed the initial count.
+    pub max_threads: usize,
+    /// Duration of each fresh initial-count reference measurement. Defaults to 250 ms.
+    pub baseline_interval: Duration,
+    /// Duration of each settled candidate measurement. Defaults to 250 ms.
+    pub adjustment_interval: Duration,
+    /// Minimum candidate/reference throughput ratio, inclusive. Defaults to `0.80`.
+    /// Invalid values outside `0.0..=1.0` use the default. Zero still requires useful work.
+    pub retained_throughput: f64,
+}
+
+impl Default for ThroughputThreads {
+    fn default() -> Self {
+        Self {
+            max_threads: usize::MAX,
+            baseline_interval: Duration::from_millis(250),
+            adjustment_interval: Duration::from_millis(250),
+            retained_throughput: 0.80,
+        }
+    }
+}
+
+impl ThroughputThreads {
+    fn normalized(mut self) -> Self {
+        self.max_threads = self.max_threads.max(1);
+        self.baseline_interval = self.baseline_interval.max(Duration::from_millis(1));
+        self.adjustment_interval = self.adjustment_interval.max(Duration::from_millis(1));
+        if !(0.0..=1.0).contains(&self.retained_throughput) {
+            self.retained_throughput = Self::default().retained_throughput;
+        }
+        self
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum Policy {
+    Marginal(AdaptiveThreads),
+    Throughput(ThroughputThreads),
+}
+
+impl From<AdaptiveThreads> for Policy {
+    fn from(config: AdaptiveThreads) -> Self {
+        Self::Marginal(config)
+    }
+}
+
+impl Policy {
+    pub(crate) fn for_options(options: crate::Options) -> Option<Self> {
+        options
+            .throughput_threads
+            .map(Self::Throughput)
+            .or_else(|| options.adaptive_threads.map(Self::Marginal))
+    }
+
+    pub(crate) fn max_threads(self) -> usize {
+        match self {
+            Self::Marginal(config) => config.normalized().max_threads,
+            Self::Throughput(config) => config.normalized().max_threads,
+        }
+    }
+
+    pub(crate) fn controller(self, initial: usize) -> Tuner {
+        match self {
+            Self::Marginal(config) => Tuner::Marginal(Controller::new(config, initial)),
+            Self::Throughput(config) => {
+                Tuner::Throughput(ThroughputController::new(config, initial))
+            }
+        }
+    }
+}
+
+pub(crate) enum Tuner {
+    Marginal(Controller),
+    Throughput(ThroughputController),
+}
+
+impl Tuner {
+    pub(crate) fn holding(&self) -> bool {
+        match self {
+            Self::Marginal(c) => c.holding(),
+            Self::Throughput(c) => c.holding(),
+        }
+    }
+
+    pub(crate) fn interval(&self) -> Duration {
+        match self {
+            Self::Marginal(c) => c.interval(),
+            Self::Throughput(c) => c.interval(),
+        }
+    }
+
+    pub(crate) fn sample(
+        &mut self,
+        entries: usize,
+        elapsed: Duration,
+        backpressured: bool,
+    ) -> usize {
+        match self {
+            Self::Marginal(c) => c.sample(entries, elapsed),
+            Self::Throughput(c) => c.sample(entries, elapsed, backpressured),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ThroughputPhase {
+    Reference,
+    Candidate { reference_rate: f64 },
+    Hold,
+}
+
+pub(crate) struct ThroughputController {
+    config: ThroughputThreads,
+    phase: ThroughputPhase,
+    initial: usize,
+    active: usize,
+    accepted: usize,
+    rejected: usize,
+    candidate: usize,
+    passes: u8,
+    failures: u8,
+    inconclusive: u8,
+}
+
+impl ThroughputController {
+    fn new(config: ThroughputThreads, initial: usize) -> Self {
+        let config = config.normalized();
+        let initial = initial.max(1).min(config.max_threads);
+        Self {
+            config,
+            phase: if initial == 1 {
+                ThroughputPhase::Hold
+            } else {
+                ThroughputPhase::Reference
+            },
+            initial,
+            active: initial,
+            accepted: initial,
+            rejected: 0,
+            candidate: (initial / 2).max(1),
+            passes: 0,
+            failures: 0,
+            inconclusive: 0,
+        }
+    }
+
+    fn holding(&self) -> bool {
+        matches!(self.phase, ThroughputPhase::Hold)
+    }
+
+    fn interval(&self) -> Duration {
+        if matches!(self.phase, ThroughputPhase::Reference) {
+            self.config.baseline_interval
+        } else {
+            self.config.adjustment_interval
+        }
+    }
+
+    fn hold(&mut self) {
+        self.active = self.accepted;
+        self.phase = ThroughputPhase::Hold;
+    }
+
+    fn sample(&mut self, entries: usize, elapsed: Duration, backpressured: bool) -> usize {
+        if elapsed.is_zero() || self.holding() {
+            return self.active;
+        }
+        if entries == 0 || backpressured {
+            // A streaming pool may be created long before the first root arrives.
+            if entries == 0
+                && self.accepted == self.initial
+                && self.passes == 0
+                && self.failures == 0
+                && self.inconclusive == 0
+                && matches!(self.phase, ThroughputPhase::Reference)
+                && !backpressured
+            {
+                return self.active;
+            }
+            self.inconclusive += 1;
+            if self.inconclusive == 3 {
+                self.hold();
+            } else {
+                self.active = self.initial;
+                self.phase = ThroughputPhase::Reference;
+            }
+            return self.active;
+        }
+        let rate = entries as f64 / elapsed.as_secs_f64();
+        match self.phase {
+            ThroughputPhase::Reference => {
+                self.phase = ThroughputPhase::Candidate {
+                    reference_rate: rate,
+                };
+                self.active = self.candidate;
+            }
+            ThroughputPhase::Candidate { reference_rate } => {
+                if rate >= reference_rate * self.config.retained_throughput {
+                    self.passes += 1;
+                } else {
+                    self.failures += 1;
+                }
+                if self.passes == 2 || self.failures == 2 {
+                    if self.passes == 2 {
+                        self.accepted = self.candidate;
+                    } else {
+                        self.rejected = self.candidate;
+                    }
+                    if self.accepted - self.rejected <= 1 {
+                        self.hold();
+                        return self.active;
+                    }
+                    self.candidate = self.rejected + (self.accepted - self.rejected) / 2;
+                    self.passes = 0;
+                    self.failures = 0;
+                    self.inconclusive = 0;
+                }
+                self.active = self.initial;
+                self.phase = ThroughputPhase::Reference;
+            }
+            ThroughputPhase::Hold => {}
+        }
+        self.active
+    }
+}
+
 #[derive(Clone, Copy)]
 enum Phase {
     Baseline,
@@ -237,5 +478,142 @@ mod tests {
             assert_eq!(cfg.baseline_interval, Duration::from_millis(1));
             assert_eq!(cfg.adjustment_interval, Duration::from_millis(1));
         }
+    }
+}
+
+#[cfg(test)]
+mod throughput_tests {
+    use super::*;
+
+    fn sample(c: &mut ThroughputController, rate: usize) -> usize {
+        c.sample(rate, Duration::from_secs(1), false)
+    }
+
+    #[test]
+    fn coarse_probe_retries_noise_and_requires_two_votes() {
+        let mut c = ThroughputController::new(ThroughputThreads::default(), 16);
+        assert_eq!(sample(&mut c, 1000), 8);
+        assert_eq!(sample(&mut c, 790), 16); // No permanent first-failure hold.
+        assert!(!c.holding());
+        assert_eq!(sample(&mut c, 1000), 8);
+        assert_eq!(sample(&mut c, 800), 16); // Inclusive 80% boundary.
+        assert_eq!(c.accepted, 16); // One pass cannot accept.
+        assert_eq!(sample(&mut c, 1000), 8);
+        assert_eq!(sample(&mut c, 810), 16);
+        assert_eq!(c.accepted, 8);
+        assert_eq!(sample(&mut c, 1000), 4);
+    }
+
+    #[test]
+    fn every_candidate_uses_fresh_initial_reference_without_compounding_loss() {
+        let mut c = ThroughputController::new(ThroughputThreads::default(), 16);
+        for _ in 0..2 {
+            assert_eq!(sample(&mut c, 1000), 8);
+            assert_eq!(sample(&mut c, 800), 16);
+        }
+        for _ in 0..2 {
+            assert_eq!(sample(&mut c, 1000), 4);
+            assert_eq!(sample(&mut c, 640), 16); // 80% of 8's rate is insufficient.
+        }
+        assert_eq!(sample(&mut c, 1000), 6); // Refine the 4..8 bracket.
+        assert_eq!(c.accepted, 8);
+        assert_eq!(c.rejected, 4);
+    }
+
+    #[test]
+    fn bounded_refinement_finds_smallest_sufficient_count() {
+        for initial in [1_usize, 2, 3, 8, 16, 31, 127] {
+            for target in 1..=initial {
+                let mut c = ThroughputController::new(ThroughputThreads::default(), initial);
+                let mut windows = 0;
+                while !c.holding() {
+                    let rate = if c.active >= target { 1000 } else { 700 };
+                    let active = sample(&mut c, rate);
+                    assert!((1..=initial).contains(&active));
+                    windows += 1;
+                    assert!(windows <= 8 * initial.ilog2() + 8);
+                }
+                assert_eq!(c.active, target);
+                // Once chosen, changing load cannot trigger endless up/down probing.
+                for rate in [0, 10_000, 1, 100_000] {
+                    assert_eq!(sample(&mut c, rate), target);
+                    assert!(c.holding());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn empty_and_backpressured_windows_cannot_accept_even_zero_target() {
+        for blocked in [false, true] {
+            let mut c = ThroughputController::new(
+                ThroughputThreads {
+                    retained_throughput: 0.0,
+                    ..ThroughputThreads::default()
+                },
+                16,
+            );
+            for _ in 0..10 {
+                assert_eq!(sample(&mut c, 0), 16); // Initial streaming gap waits.
+            }
+            for _ in 0..3 {
+                assert_eq!(sample(&mut c, 1000), 8);
+                assert_eq!(
+                    c.sample(
+                        if blocked { 1000 } else { 0 },
+                        Duration::from_secs(1),
+                        blocked
+                    ),
+                    16
+                );
+            }
+            assert!(c.holding());
+        }
+    }
+
+    #[test]
+    fn invalid_later_probe_restores_last_accepted_count() {
+        let mut c = ThroughputController::new(ThroughputThreads::default(), 16);
+        for _ in 0..2 {
+            sample(&mut c, 1000);
+            sample(&mut c, 1000);
+        }
+        for _ in 0..3 {
+            sample(&mut c, 1000);
+            sample(&mut c, 0);
+        }
+        assert!(c.holding());
+        assert_eq!(c.active, 8);
+    }
+
+    #[test]
+    fn config_normalization_intervals_and_policy_precedence() {
+        let cfg = ThroughputThreads {
+            max_threads: 0,
+            baseline_interval: Duration::ZERO,
+            adjustment_interval: Duration::ZERO,
+            retained_throughput: f64::NAN,
+        }
+        .normalized();
+        assert_eq!(cfg.max_threads, 1);
+        assert_eq!(cfg.baseline_interval, Duration::from_millis(1));
+        assert_eq!(cfg.adjustment_interval, Duration::from_millis(1));
+        assert!((cfg.retained_throughput - 0.80).abs() < f64::EPSILON);
+        let policy = Policy::for_options(crate::Options {
+            adaptive_threads: Some(AdaptiveThreads {
+                max_threads: 2,
+                ..AdaptiveThreads::default()
+            }),
+            throughput_threads: Some(ThroughputThreads {
+                max_threads: 8,
+                ..ThroughputThreads::default()
+            }),
+            ..crate::Options::default()
+        })
+        .unwrap();
+        assert_eq!(policy.max_threads(), 8);
+        let mut c = policy.controller(16);
+        assert_eq!(c.sample(1000, Duration::ZERO, false), 8);
+        assert_eq!(c.sample(1000, Duration::from_secs(1), false), 4);
     }
 }

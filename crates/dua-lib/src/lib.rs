@@ -28,7 +28,7 @@
 #![deny(missing_docs)]
 
 mod adaptive;
-pub use adaptive::AdaptiveThreads;
+pub use adaptive::{AdaptiveThreads, ThroughputThreads};
 
 use crossbeam::{
     deque::{Injector, Steal, Stealer, Worker},
@@ -42,7 +42,7 @@ use std::{
     sync::{
         Arc,
         atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering},
-        mpsc::{Receiver, SyncSender, sync_channel},
+        mpsc::{Receiver, SendError, SyncSender, TrySendError, sync_channel},
     },
     thread,
 };
@@ -164,9 +164,11 @@ pub struct Options {
     /// without directory-entry types may still require a metadata lookup. This also disables
     /// APFS clone metadata collection.
     pub skip_metadata: bool,
-    /// Enable throughput-based worker tuning. `None` preserves the fixed thread argument.
+    /// Enable marginal-loss worker tuning. Both tuning options `None` keep threads fixed.
     /// When set, the constructor thread argument is the initial count, capped by its maximum.
     pub adaptive_threads: Option<AdaptiveThreads>,
+    /// Opt-in coarse throughput-retention search, taking precedence over `adaptive_threads`.
+    pub throughput_threads: Option<ThroughputThreads>,
     /// Collect APFS clone identity and data-fork allocation metadata.
     #[cfg(target_os = "macos")]
     pub apfs_clone_metadata: bool,
@@ -307,9 +309,14 @@ struct PoolShared {
     next_directory_id: AtomicUsize,
     active_workers: AtomicUsize,
     completed_entries: AtomicUsize,
+    /// Send-blocked worker time, tracked only for the throughput policy.
+    blocked_nanos: AtomicUsize,
+    #[cfg(test)]
+    blocked_senders: AtomicUsize,
     /// Each count change has an epoch; retired workers acknowledge it at job boundaries.
     admission_epoch: AtomicUsize,
     retired_epoch: Vec<AtomicUsize>,
+    tuning_complete: AtomicBool,
     restart_controller: AtomicBool,
     controller_unparker: Option<Unparker>,
 }
@@ -386,7 +393,8 @@ impl Drop for RootSender {
 }
 
 /// Start a worker pool that accepts roots while its events are consumed.
-/// [`Options::adaptive_threads`] enables downward tuning from the initial `threads` count.
+/// [`Options::adaptive_threads`] or [`Options::throughput_threads`] enables downward tuning
+/// from the initial `threads` count.
 ///
 /// The iterator waits during gaps in submissions. It ends only after the sender is dropped
 /// and every submitted root has emitted [`RootEvent::Finished`]. Each root has its own predicate,
@@ -503,6 +511,17 @@ impl RootWalk {
         })
     }
 
+    /// Whether the controller has finished searching and will hold its chosen count.
+    /// Fixed pools return true. Unlike [`Self::threads_settled`], this reports search
+    /// completion, not retirement; the final admitted count may still be taking effect.
+    /// A successful restart clears it until the new search completes.
+    #[must_use]
+    pub fn thread_tuning_complete(&self) -> bool {
+        self.pool
+            .as_ref()
+            .is_none_or(|pool| pool.shared.tuning_complete.load(AtomicOrdering::Acquire))
+    }
+
     /// Whether all workers outside the admitted count have acknowledged retirement.
     /// A separate observation from [`Self::active_threads`]; concurrent changes may occur between
     /// calls. Returns `true` without a pool. Candidate measurement waits for this condition.
@@ -523,6 +542,17 @@ impl Walk {
         self.pool.as_ref().map_or(0, |pool| {
             pool.shared.active_workers.load(AtomicOrdering::Acquire)
         })
+    }
+
+    /// Whether the controller has finished searching and will hold its chosen count.
+    /// Fixed pools return true. Unlike [`Self::threads_settled`], this reports search
+    /// completion, not retirement; the final admitted count may still be taking effect.
+    /// A successful restart clears it until the new search completes.
+    #[must_use]
+    pub fn thread_tuning_complete(&self) -> bool {
+        self.pool
+            .as_ref()
+            .is_none_or(|pool| pool.shared.tuning_complete.load(AtomicOrdering::Acquire))
     }
 
     /// Whether all workers outside the admitted count have acknowledged retirement.
@@ -570,7 +600,10 @@ impl Walk {
                 .next_directory_id
                 .store(1, AtomicOrdering::Relaxed);
             self.finished = false;
-            if pool.shared.options.adaptive_threads.is_some() {
+            if pool.shared.controller_unparker.is_some() {
+                pool.shared
+                    .tuning_complete
+                    .store(false, AtomicOrdering::Release);
                 pool.shared
                     .restart_controller
                     .store(true, AtomicOrdering::Release);
@@ -847,8 +880,8 @@ impl Entry {
 }
 
 fn start_pool(threads: usize, order: Order, options: Options, next_directory_id: usize) -> Pool {
-    let adaptive = options.adaptive_threads.map(AdaptiveThreads::normalized);
-    let threads = adaptive.map_or(threads, |config| threads.min(config.max_threads));
+    let adaptive = adaptive::Policy::for_options(options);
+    let threads = adaptive.map_or(threads, |config| threads.min(config.max_threads()));
     let controller_parker = adaptive.map(|_| Parker::new());
     let workers: Vec<_> = (0..threads).map(|_| Worker::new_lifo()).collect();
     let parkers: Vec<_> = (0..threads).map(|_| Parker::new()).collect();
@@ -870,8 +903,12 @@ fn start_pool(threads: usize, order: Order, options: Options, next_directory_id:
         next_directory_id: AtomicUsize::new(next_directory_id),
         active_workers: AtomicUsize::new(threads),
         completed_entries: AtomicUsize::new(0),
+        blocked_nanos: AtomicUsize::new(0),
+        #[cfg(test)]
+        blocked_senders: AtomicUsize::new(0),
         admission_epoch: AtomicUsize::new(1),
         retired_epoch: (0..threads).map(|_| AtomicUsize::new(0)).collect(),
+        tuning_complete: AtomicBool::new(adaptive.is_none() || threads == 1),
         restart_controller: AtomicBool::new(false),
         controller_unparker: controller_parker.as_ref().map(|p| p.unparker().clone()),
     });
@@ -1002,9 +1039,10 @@ fn retirement_settled(shared: &PoolShared) -> bool {
         .all(|retired| retired.load(AtomicOrdering::Acquire) == epoch)
 }
 
-fn tune_workers(config: AdaptiveThreads, parker: Parker, shared: &PoolShared) {
+fn tune_workers(config: impl Into<adaptive::Policy>, parker: Parker, shared: &PoolShared) {
+    let config = config.into();
     let initial = shared.stealers.len();
-    let mut controller = adaptive::Controller::new(config, initial);
+    let mut controller = config.controller(initial);
     let mut last = Some(std::time::Instant::now());
     loop {
         if shared.stop.load(AtomicOrdering::Acquire) {
@@ -1014,10 +1052,13 @@ fn tune_workers(config: AdaptiveThreads, parker: Parker, shared: &PoolShared) {
             .restart_controller
             .swap(false, AtomicOrdering::AcqRel)
         {
-            controller = adaptive::Controller::new(config, initial);
+            controller = config.controller(initial);
             admit_workers(shared, initial);
             last = None;
         }
+        shared
+            .tuning_complete
+            .store(controller.holding(), AtomicOrdering::Release);
         if controller.holding() || !retirement_settled(shared) {
             // Acknowledgement, restart, and shutdown all unpark the controller. No timer or
             // sleep is evidence that a worker has retired (a filesystem call may still run).
@@ -1027,6 +1068,7 @@ fn tune_workers(config: AdaptiveThreads, parker: Parker, shared: &PoolShared) {
         let start = *last.get_or_insert_with(|| {
             // Discard all entries delivered while the old workers were finishing their jobs.
             shared.completed_entries.store(0, AtomicOrdering::Relaxed);
+            shared.blocked_nanos.store(0, AtomicOrdering::Relaxed);
             std::time::Instant::now()
         });
         let remaining = controller.interval().saturating_sub(start.elapsed());
@@ -1043,7 +1085,15 @@ fn tune_workers(config: AdaptiveThreads, parker: Parker, shared: &PoolShared) {
         } else {
             entries
         };
-        let active = controller.sample(entries, now.duration_since(start));
+        let elapsed = now.duration_since(start);
+        let active_workers = shared.active_workers.load(AtomicOrdering::Acquire);
+        let blocked = shared.blocked_nanos.swap(0, AtomicOrdering::Relaxed);
+        // More than 10% of worker capacity spent waiting on the consumer is inconclusive.
+        // Charge completed waits, not instantaneous queue occupancy: bursty sends can briefly
+        // fill the queue even with a fast consumer. A fully stalled window has zero entries.
+        let backpressured =
+            blocked as f64 > elapsed.as_nanos() as f64 * active_workers as f64 * 0.10;
+        let active = controller.sample(entries, elapsed, backpressured);
         if shared.active_workers.load(AtomicOrdering::Acquire) != active {
             admit_workers(shared, active);
             last = None;
@@ -1161,18 +1211,19 @@ fn run_job(job: Job, worker: &Worker<Job>, shared: &PoolShared) {
             }
             // Root entries precede descendants in either traversal order.
             root.pending.fetch_add(jobs.len(), AtomicOrdering::Relaxed);
-            if shared
-                .events
-                .send(Event::Batch {
+            if send_batch(
+                shared,
+                Event::Batch {
                     root_idx: root.index,
                     batch: Ok(vec![entry]),
-                })
-                .is_err()
+                },
+            )
+            .is_err()
             {
                 shared.stop.store(true, AtomicOrdering::Relaxed);
                 return;
             }
-            if shared.options.adaptive_threads.is_some() {
+            if shared.controller_unparker.is_some() {
                 shared
                     .completed_entries
                     .fetch_add(1, AtomicOrdering::Relaxed);
@@ -1565,6 +1616,31 @@ fn allocate_directory_id(shared: &PoolShared) -> DirectoryId {
     )
 }
 
+// Legacy/fixed walks keep the original send path. Only the opt-in policy measures
+// time spent blocked on a full consumer queue, without adding per-entry atomics.
+fn send_batch(shared: &PoolShared, event: Event) -> Result<(), SendError<Event>> {
+    if shared.options.throughput_threads.is_none() {
+        return shared.events.send(event);
+    }
+    match shared.events.try_send(event) {
+        Ok(()) => Ok(()),
+        Err(TrySendError::Disconnected(event)) => Err(SendError(event)),
+        Err(TrySendError::Full(event)) => {
+            let start = std::time::Instant::now();
+            #[cfg(test)]
+            shared.blocked_senders.fetch_add(1, AtomicOrdering::Relaxed);
+            let result = shared.events.send(event);
+            shared.blocked_nanos.fetch_add(
+                usize::try_from(start.elapsed().as_nanos()).unwrap_or(usize::MAX),
+                AtomicOrdering::Relaxed,
+            );
+            #[cfg(test)]
+            shared.blocked_senders.fetch_sub(1, AtomicOrdering::Relaxed);
+            result
+        }
+    }
+}
+
 /// Publish a directory batch and schedule its accepted child-directory jobs.
 /// `ParentFirst` sends the batch before exposing child jobs; `Completion` exposes child jobs first.
 /// Child jobs are counted before either action; the caller completes the current job after EOF.
@@ -1583,13 +1659,14 @@ fn publish_directory(
 
     match shared.order {
         Order::ParentFirst => {
-            if shared
-                .events
-                .send(Event::Batch {
+            if send_batch(
+                shared,
+                Event::Batch {
                     root_idx: root.index,
                     batch,
-                })
-                .is_err()
+                },
+            )
+            .is_err()
             {
                 shared.stop.store(true, AtomicOrdering::Relaxed);
                 return false;
@@ -1598,13 +1675,14 @@ fn publish_directory(
         }
         Order::Completion => {
             schedule_jobs(jobs, worker, shared);
-            if shared
-                .events
-                .send(Event::Batch {
+            if send_batch(
+                shared,
+                Event::Batch {
                     root_idx: root.index,
                     batch,
-                })
-                .is_err()
+                },
+            )
+            .is_err()
             {
                 shared.stop.store(true, AtomicOrdering::Relaxed);
                 return false;
@@ -1612,7 +1690,7 @@ fn publish_directory(
         }
     }
 
-    if shared.options.adaptive_threads.is_some() {
+    if shared.controller_unparker.is_some() {
         shared
             .completed_entries
             .fetch_add(entries, AtomicOrdering::Relaxed);
@@ -1673,8 +1751,12 @@ mod tests {
             next_directory_id: AtomicUsize::new(0),
             active_workers: AtomicUsize::new(1),
             completed_entries: AtomicUsize::new(0),
+            blocked_nanos: AtomicUsize::new(0),
+            #[cfg(test)]
+            blocked_senders: AtomicUsize::new(0),
             admission_epoch: AtomicUsize::new(1),
             retired_epoch: (0..2).map(|_| AtomicUsize::new(0)).collect(),
+            tuning_complete: AtomicBool::new(false),
             restart_controller: AtomicBool::new(false),
             controller_unparker: None,
         });
@@ -1702,42 +1784,83 @@ mod tests {
     #[test]
     fn adaptive_pool_honors_initial_cap_counts_roots_and_stops_its_timer() {
         use std::time::Duration;
-        let directory = tempfile::tempdir().unwrap();
-        let file = directory.path().join("file");
-        fs::write(&file, b"entry").unwrap();
-        let options = Options {
-            adaptive_threads: Some(AdaptiveThreads {
-                max_threads: 4,
-                baseline_interval: Duration::from_secs(3600),
-                ..AdaptiveThreads::default()
-            }),
-            ..Options::default()
-        };
-        let (mut sender, mut walk) = stream_roots(9, Order::ParentFirst, options);
-        assert_eq!(walk.active_threads(), 4);
-        assert_eq!(walk.pool.as_ref().unwrap().shared.stealers.len(), 4);
-        sender.add_root(0, file, |_| true).unwrap();
-        assert!(matches!(walk.next(), Some((0, RootEvent::Entry(Ok(_))))));
-        assert!(matches!(walk.next(), Some((0, RootEvent::Finished))));
-        assert_eq!(
-            walk.pool
-                .as_ref()
-                .unwrap()
-                .shared
-                .completed_entries
-                .load(AtomicOrdering::Relaxed),
-            1
+        for throughput in [false, true] {
+            let directory = tempfile::tempdir().unwrap();
+            let file = directory.path().join("file");
+            fs::write(&file, b"entry").unwrap();
+            let options = Options {
+                throughput_threads: throughput.then_some(ThroughputThreads {
+                    max_threads: 4,
+                    baseline_interval: Duration::from_secs(3600),
+                    ..ThroughputThreads::default()
+                }),
+                adaptive_threads: (!throughput).then_some(AdaptiveThreads {
+                    max_threads: 4,
+                    baseline_interval: Duration::from_secs(3600),
+                    ..AdaptiveThreads::default()
+                }),
+                ..Options::default()
+            };
+            let (mut sender, mut walk) = stream_roots(9, Order::ParentFirst, options);
+            assert_eq!(walk.active_threads(), 4);
+            assert!(!walk.thread_tuning_complete());
+            assert_eq!(walk.pool.as_ref().unwrap().shared.stealers.len(), 4);
+            sender.add_root(0, file, |_| true).unwrap();
+            assert!(matches!(walk.next(), Some((0, RootEvent::Entry(Ok(_))))));
+            assert!(matches!(walk.next(), Some((0, RootEvent::Finished))));
+            assert_eq!(
+                walk.pool
+                    .as_ref()
+                    .unwrap()
+                    .shared
+                    .completed_entries
+                    .load(AtomicOrdering::Relaxed),
+                1
+            );
+            let (done_tx, done_rx) = sync_channel(1);
+            let closer = thread::spawn(move || {
+                drop(sender);
+                drop(walk);
+                done_tx.send(()).unwrap();
+            });
+            done_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("shutdown must interrupt the one-hour timer");
+            closer.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn throughput_backpressure_is_recorded_and_shutdown_disconnects_blocked_sends() {
+        use std::time::Duration;
+        let pool = start_pool(
+            2,
+            Order::Completion,
+            Options {
+                throughput_threads: Some(ThroughputThreads {
+                    baseline_interval: Duration::from_secs(3600),
+                    ..ThroughputThreads::default()
+                }),
+                ..Options::default()
+            },
+            0,
         );
+        // Fill the event queue without filesystem work or a timing-dependent slow consumer.
+        for _ in 0..4 {
+            send_batch(&pool.shared, Event::Finished).unwrap();
+        }
+        let shared = Arc::clone(&pool.shared);
         let (done_tx, done_rx) = sync_channel(1);
-        let closer = thread::spawn(move || {
-            drop(sender);
-            drop(walk);
-            done_tx.send(()).unwrap();
+        let blocked = thread::spawn(move || {
+            let result = send_batch(&shared, Event::Finished);
+            assert_eq!(shared.blocked_senders.load(AtomicOrdering::Relaxed), 0);
+            assert!(shared.blocked_nanos.load(AtomicOrdering::Relaxed) > 0);
+            done_tx.send(result.is_err()).unwrap();
         });
-        done_rx
-            .recv_timeout(Duration::from_secs(5))
-            .expect("shutdown must interrupt the one-hour timer");
-        closer.join().unwrap();
+        wait_until(|| pool.shared.blocked_senders.load(AtomicOrdering::Relaxed) == 1);
+        drop(pool);
+        assert!(done_rx.recv_timeout(Duration::from_secs(5)).unwrap());
+        blocked.join().unwrap();
     }
 
     fn wait_until(mut ready: impl FnMut() -> bool) {
@@ -1866,106 +1989,128 @@ mod tests {
     #[test]
     fn tuner_waits_for_retirement_and_discards_transition_entries() {
         use std::time::Duration;
-        for acknowledge in [false, true] {
-            let workers = [Worker::new_lifo(), Worker::new_lifo()];
-            let parkers = [Parker::new(), Parker::new()];
-            let tuner = Parker::new();
-            let (events, received) = sync_channel(2);
-            let shared = Arc::new(PoolShared {
-                injector: Injector::new(),
-                stealers: workers.iter().map(Worker::stealer).collect(),
-                stop: AtomicBool::new(false),
-                events,
-                active_roots: AtomicUsize::new(1),
-                order: Order::ParentFirst,
-                options: Options::default(),
-                unparkers: parkers.iter().map(|p| p.unparker().clone()).collect(),
-                idle: (0..2).map(|_| AtomicBool::new(false)).collect(),
-                next_wake: AtomicUsize::new(0),
-                next_directory_id: AtomicUsize::new(0),
-                active_workers: AtomicUsize::new(2),
-                completed_entries: AtomicUsize::new(1000),
-                admission_epoch: AtomicUsize::new(1),
-                retired_epoch: (0..2).map(|_| AtomicUsize::new(0)).collect(),
-                restart_controller: AtomicBool::new(false),
-                controller_unparker: Some(tuner.unparker().clone()),
-            });
-            let control = Arc::clone(&shared);
-            let (done_tx, done_rx) = sync_channel(1);
-            let handle = thread::spawn(move || {
-                tune_workers(
-                    AdaptiveThreads {
-                        baseline_interval: Duration::from_millis(10),
-                        adjustment_interval: Duration::from_millis(10),
-                        ..AdaptiveThreads::default()
-                    },
-                    tuner,
-                    &control,
-                );
-                done_tx.send(()).unwrap();
-            });
-            wait_until(|| shared.active_workers.load(AtomicOrdering::Acquire) == 1);
-            // Simulate a retiring job still producing entries, but with no retirement acknowledgement.
-            // Wake the timer well beyond its interval: only an acknowledgement can start sampling.
-            shared
-                .completed_entries
-                .store(100_000, AtomicOrdering::Relaxed);
-            thread::sleep(Duration::from_millis(40));
-            shared.controller_unparker.as_ref().unwrap().unpark();
-            thread::sleep(Duration::from_millis(40));
-            assert_eq!(
-                shared.completed_entries.load(AtomicOrdering::Relaxed),
-                100_000
-            );
-            assert!(!retirement_settled(&shared));
-            if acknowledge {
-                shared.retired_epoch[1].store(
-                    shared.admission_epoch.load(AtomicOrdering::Acquire),
-                    AtomicOrdering::Release,
-                );
+        for throughput in [false, true] {
+            for acknowledge in [false, true] {
+                let workers = [Worker::new_lifo(), Worker::new_lifo()];
+                let parkers = [Parker::new(), Parker::new()];
+                let tuner = Parker::new();
+                let (events, received) = sync_channel(2);
+                let shared = Arc::new(PoolShared {
+                    injector: Injector::new(),
+                    stealers: workers.iter().map(Worker::stealer).collect(),
+                    stop: AtomicBool::new(false),
+                    events,
+                    active_roots: AtomicUsize::new(1),
+                    order: Order::ParentFirst,
+                    options: Options::default(),
+                    unparkers: parkers.iter().map(|p| p.unparker().clone()).collect(),
+                    idle: (0..2).map(|_| AtomicBool::new(false)).collect(),
+                    next_wake: AtomicUsize::new(0),
+                    next_directory_id: AtomicUsize::new(0),
+                    active_workers: AtomicUsize::new(2),
+                    completed_entries: AtomicUsize::new(1000),
+                    blocked_nanos: AtomicUsize::new(0),
+                    #[cfg(test)]
+                    blocked_senders: AtomicUsize::new(0),
+                    admission_epoch: AtomicUsize::new(1),
+                    retired_epoch: (0..2).map(|_| AtomicUsize::new(0)).collect(),
+                    tuning_complete: AtomicBool::new(false),
+                    restart_controller: AtomicBool::new(false),
+                    controller_unparker: Some(tuner.unparker().clone()),
+                });
+                let control = Arc::clone(&shared);
+                let (done_tx, done_rx) = sync_channel(1);
+                let handle = thread::spawn(move || {
+                    tune_workers(
+                        if throughput {
+                            adaptive::Policy::Throughput(ThroughputThreads {
+                                baseline_interval: Duration::from_millis(10),
+                                adjustment_interval: Duration::from_millis(10),
+                                ..ThroughputThreads::default()
+                            })
+                        } else {
+                            adaptive::Policy::Marginal(AdaptiveThreads {
+                                baseline_interval: Duration::from_millis(10),
+                                adjustment_interval: Duration::from_millis(10),
+                                ..AdaptiveThreads::default()
+                            })
+                        },
+                        tuner,
+                        &control,
+                    );
+                    done_tx.send(()).unwrap();
+                });
+                wait_until(|| shared.active_workers.load(AtomicOrdering::Acquire) == 1);
+                // Simulate a retiring job still producing entries, but with no retirement acknowledgement.
+                // Wake the timer well beyond its interval: only an acknowledgement can start sampling.
+                shared
+                    .completed_entries
+                    .store(100_000, AtomicOrdering::Relaxed);
+                thread::sleep(Duration::from_millis(40));
                 shared.controller_unparker.as_ref().unwrap().unpark();
-                // Transition entries are discarded, so the empty candidate rolls back instead of accepting.
-                wait_until(|| shared.active_workers.load(AtomicOrdering::Acquire) == 2);
+                thread::sleep(Duration::from_millis(40));
+                assert_eq!(
+                    shared.completed_entries.load(AtomicOrdering::Relaxed),
+                    100_000
+                );
+                assert!(!retirement_settled(&shared));
+                assert!(!shared.tuning_complete.load(AtomicOrdering::Acquire));
+                if acknowledge {
+                    shared.retired_epoch[1].store(
+                        shared.admission_epoch.load(AtomicOrdering::Acquire),
+                        AtomicOrdering::Release,
+                    );
+                    shared.controller_unparker.as_ref().unwrap().unpark();
+                    // Transition entries are discarded, so the empty candidate rolls back instead of accepting.
+                    wait_until(|| shared.active_workers.load(AtomicOrdering::Acquire) == 2);
+                    wait_until(|| shared.tuning_complete.load(AtomicOrdering::Acquire));
+                }
+                shared.stop.store(true, AtomicOrdering::Release);
+                shared.controller_unparker.as_ref().unwrap().unpark();
+                done_rx
+                    .recv_timeout(Duration::from_secs(5))
+                    .expect("shutdown interrupts both retirement wait and hold");
+                handle.join().unwrap();
+                drop((workers, received));
             }
-            shared.stop.store(true, AtomicOrdering::Release);
-            shared.controller_unparker.as_ref().unwrap().unpark();
-            done_rx
-                .recv_timeout(Duration::from_secs(5))
-                .expect("shutdown interrupts both retirement wait and hold");
-            handle.join().unwrap();
-            drop((workers, received));
         }
     }
 
     #[test]
     fn cancellation_wakes_parked_workers_and_controller() {
         use std::time::Duration;
-        let (sender, walk) = stream_roots(
-            4,
-            Order::ParentFirst,
-            Options {
-                adaptive_threads: Some(AdaptiveThreads {
-                    baseline_interval: Duration::from_millis(1),
-                    ..AdaptiveThreads::default()
-                }),
-                ..Options::default()
-            },
-        );
-        let shared = Arc::clone(&walk.pool.as_ref().unwrap().shared);
-        // Idle streaming windows must not cause any descent.
-        thread::sleep(Duration::from_millis(20));
-        assert_eq!(walk.active_threads(), 4);
-        admit_workers(&shared, 1);
-        wait_until(|| retirement_settled(&shared));
-        let (tx, rx) = sync_channel(1);
-        let closer = thread::spawn(move || {
-            drop(walk);
-            drop(sender);
-            tx.send(()).unwrap();
-        });
-        rx.recv_timeout(Duration::from_secs(5))
-            .expect("parked pool cancellation is bounded");
-        closer.join().unwrap();
+        for throughput in [false, true] {
+            let (sender, walk) = stream_roots(
+                4,
+                Order::ParentFirst,
+                Options {
+                    throughput_threads: throughput.then_some(ThroughputThreads {
+                        baseline_interval: Duration::from_millis(1),
+                        ..ThroughputThreads::default()
+                    }),
+                    adaptive_threads: (!throughput).then_some(AdaptiveThreads {
+                        baseline_interval: Duration::from_millis(1),
+                        ..AdaptiveThreads::default()
+                    }),
+                    ..Options::default()
+                },
+            );
+            let shared = Arc::clone(&walk.pool.as_ref().unwrap().shared);
+            // Idle streaming windows must not cause any descent.
+            thread::sleep(Duration::from_millis(20));
+            assert_eq!(walk.active_threads(), 4);
+            admit_workers(&shared, 1);
+            wait_until(|| retirement_settled(&shared));
+            let (tx, rx) = sync_channel(1);
+            let closer = thread::spawn(move || {
+                drop(walk);
+                drop(sender);
+                tx.send(()).unwrap();
+            });
+            rx.recv_timeout(Duration::from_secs(5))
+                .expect("parked pool cancellation is bounded");
+            closer.join().unwrap();
+        }
     }
 
     #[test]
@@ -2024,6 +2169,7 @@ mod tests {
         let (release_tx, release_rx) = crossbeam::channel::bounded(1);
         let (mut roots, walk) = stream_roots(2, Order::ParentFirst, Options::default());
         assert_eq!(walk.pool.as_ref().unwrap().handles.len(), 2);
+        assert!(walk.thread_tuning_complete());
         let (finished_tx, finished_rx) = crossbeam::channel::unbounded();
         let reader = thread::spawn(move || {
             for (index, event) in walk {

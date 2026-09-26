@@ -919,6 +919,7 @@ mod tests {
                         skip_metadata: false,
                         apfs_clone_metadata: true,
                         adaptive_threads: None,
+                        throughput_threads: None,
                     },
                 },
                 true,
@@ -942,6 +943,7 @@ mod tests {
                 skip_metadata: false,
                 apfs_clone_metadata: true,
                 adaptive_threads: None,
+                throughput_threads: None,
             },
         )
         .unwrap()
@@ -962,6 +964,7 @@ mod tests {
                     skip_metadata: false,
                     apfs_clone_metadata: true,
                     adaptive_threads: None,
+                    throughput_threads: None,
                 },
             },
             true,
