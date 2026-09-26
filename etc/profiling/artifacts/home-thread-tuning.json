@@ -1,0 +1,4324 @@
+{
+  "binary_sha256": "f89a9207c91a582274f75463c5725e92db80ea3518f0d9f781fcb67f5fbd2486",
+  "root": "~",
+  "scope": "raw core, no symlink following, ordinary user permissions",
+  "interval_ms": 250,
+  "retained_throughput": 0.8,
+  "rows": [
+    {
+      "label": "1-throughput-16",
+      "mode": "throughput",
+      "initial_threads": 16,
+      "outer_wall_seconds": 98.3464462920092,
+      "user_seconds": 26.799179,
+      "system_seconds": 393.086317,
+      "summary": {
+        "seconds": 98.139793,
+        "entries": 22439472,
+        "directories": 3893159,
+        "logical_bytes": 2064702067666,
+        "errors": 158,
+        "admitted": 7,
+        "retirement_settled": true,
+        "tuning_complete": true
+      },
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 0,
+          "errors": 0
+        },
+        {
+          "elapsed_ms": 255,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 72636,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 333,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 91314,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 588,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 150771,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 842,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 234117,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 844,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 234740,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1099,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 296270,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1354,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 380566,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1371,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 385708,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1622,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 453028,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1873,
+          "admitted": 4,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 546887,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1881,
+          "admitted": 4,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 549771,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 2137,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 625215,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 2387,
+          "admitted": 4,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 719746,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2398,
+          "admitted": 4,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 724225,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2653,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 787625,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2908,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 870050,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2908,
+          "admitted": 6,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 870223,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3163,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 936274,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3418,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1027452,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3442,
+          "admitted": 6,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1039661,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3696,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1106073,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3949,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1185442,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 4357,
+          "admitted": 6,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1283127,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 4609,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1339773,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 4861,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1422473,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 4870,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1426267,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5121,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1490167,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5373,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1568173,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5406,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1575998,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5661,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1645928,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5913,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1729260,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5935,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1737795,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 6190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1807758,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 7190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2080268,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 8190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2295408,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 9190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2529427,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 10190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2835639,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 11190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3120023,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 12190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3436202,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 13190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3752552,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 14190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3993928,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 15190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4189172,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 16190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4372121,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 17190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4564510,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 18190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4754316,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 19190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4940801,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 20190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5137809,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 21190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5302892,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 22190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5471647,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 23190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5632283,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 24190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5802920,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 25190,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5947836,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 26191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6016321,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 27191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6132265,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 28191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6295786,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 29191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6471074,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 30191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6742126,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 31191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7034548,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 32191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7345427,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 33191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7585161,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 34191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7853854,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 35191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8094484,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 36191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8303738,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 37191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8577531,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 38191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8865862,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 39191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9171546,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 40191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9515179,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 41191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9794796,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 42191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10037020,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 43191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10315672,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 44191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10598654,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 45191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10858932,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 46191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11144439,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 47191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11417845,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 48191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11671109,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 49191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11901671,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 50191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12147867,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 51191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12430717,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 52191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12655773,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 53191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12920829,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 54191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13190519,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 55191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13421809,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 56191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13671107,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 57191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13874046,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 58191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14078216,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 59191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14363187,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 60191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14644196,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 61191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14896491,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 62191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15170058,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 63191,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15383756,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 64192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15639941,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 65192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15933761,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 66192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16210423,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 67192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16519311,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 68192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16865220,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 69192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17230238,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 70192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17574330,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 71192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17904017,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 72192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18160126,
+          "errors": 8
+        },
+        {
+          "elapsed_ms": 73192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18477902,
+          "errors": 8
+        },
+        {
+          "elapsed_ms": 74192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18680892,
+          "errors": 16
+        },
+        {
+          "elapsed_ms": 75192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18879680,
+          "errors": 16
+        },
+        {
+          "elapsed_ms": 76192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19112217,
+          "errors": 32
+        },
+        {
+          "elapsed_ms": 77192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19224340,
+          "errors": 32
+        },
+        {
+          "elapsed_ms": 78192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19316280,
+          "errors": 32
+        },
+        {
+          "elapsed_ms": 79192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19443576,
+          "errors": 32
+        },
+        {
+          "elapsed_ms": 80192,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19567962,
+          "errors": 39
+        },
+        {
+          "elapsed_ms": 82635,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19623426,
+          "errors": 59
+        },
+        {
+          "elapsed_ms": 83635,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19705623,
+          "errors": 130
+        },
+        {
+          "elapsed_ms": 84635,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19756225,
+          "errors": 131
+        },
+        {
+          "elapsed_ms": 85635,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19824717,
+          "errors": 152
+        },
+        {
+          "elapsed_ms": 86635,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19941387,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 87638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20053564,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 88638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20232370,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 89638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20376805,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 90638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20567451,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 91638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20801037,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 92638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21033316,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 93638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21296739,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 94638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21595001,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 95638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21797388,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 96638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22071600,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 97638,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22332886,
+          "errors": 158
+        }
+      ],
+      "count_changes": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 0,
+          "errors": 0
+        },
+        {
+          "elapsed_ms": 255,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 72636,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 588,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 150771,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 842,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 234117,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1099,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 296270,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1354,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 380566,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1622,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 453028,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1873,
+          "admitted": 4,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 546887,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 2137,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 625215,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 2387,
+          "admitted": 4,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 719746,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2653,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 787625,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2908,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 870050,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3163,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 936274,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3418,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1027452,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3696,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1106073,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3949,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1185442,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 4609,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1339773,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 4861,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1422473,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5121,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1490167,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5373,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1568173,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5661,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1645928,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 5913,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1729260,
+          "errors": 4
+        }
+      ],
+      "first_tuning_complete": {
+        "elapsed_ms": 6190,
+        "admitted": 7,
+        "retirement_settled": true,
+        "tuning_complete": true,
+        "entries": 1807758,
+        "errors": 5
+      },
+      "changes_after_tuning_complete": []
+    },
+    {
+      "label": "2-fixed-8",
+      "mode": "fixed",
+      "initial_threads": 8,
+      "outer_wall_seconds": 83.44238429202233,
+      "user_seconds": 25.672035000000005,
+      "system_seconds": 373.204378,
+      "summary": {
+        "seconds": 83.437955,
+        "entries": 22439505,
+        "directories": 3893159,
+        "logical_bytes": 2064705391235,
+        "errors": 158,
+        "admitted": 8,
+        "retirement_settled": true,
+        "tuning_complete": true
+      },
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 0,
+          "errors": 0
+        },
+        {
+          "elapsed_ms": 1000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 270576,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 2000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 563085,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 3000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 889322,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 4000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1117205,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 5000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1451182,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 6000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1812740,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 7000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2086141,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 8000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2367259,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 9000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2693945,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 10000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3030016,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 11000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3415345,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 12000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3789593,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 13000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4147004,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 14000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4493744,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 15000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4805410,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 16000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5133702,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 17000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5377437,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 18000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5641910,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 19000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5985825,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 20000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6369208,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 21000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6727989,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 22000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7134109,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 23000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7519443,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 24000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7728495,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 25000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8023590,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 26000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8387973,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 27000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8741683,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 28000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9027249,
+          "errors": 13
+        },
+        {
+          "elapsed_ms": 29000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9313367,
+          "errors": 18
+        },
+        {
+          "elapsed_ms": 30000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9557040,
+          "errors": 19
+        },
+        {
+          "elapsed_ms": 31000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9826557,
+          "errors": 28
+        },
+        {
+          "elapsed_ms": 32000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10075112,
+          "errors": 35
+        },
+        {
+          "elapsed_ms": 33000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10294476,
+          "errors": 115
+        },
+        {
+          "elapsed_ms": 34000,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10466647,
+          "errors": 133
+        },
+        {
+          "elapsed_ms": 35001,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10600864,
+          "errors": 134
+        },
+        {
+          "elapsed_ms": 36001,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10703516,
+          "errors": 151
+        },
+        {
+          "elapsed_ms": 37001,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10894001,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 38001,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11122357,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 39003,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11379775,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 40003,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11615103,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 41003,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11904694,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 42003,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12155521,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 43003,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12388579,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 44003,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12666420,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 45003,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12971655,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 46004,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13263895,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 47004,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13546034,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 48004,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13845148,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 49004,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14102829,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 50004,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14348372,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 51004,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14536726,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 52006,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14605175,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 53006,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14822629,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 54006,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15051573,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 55006,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15302005,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 56006,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15570198,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 57006,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15863096,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 58006,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16126696,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 59006,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16370138,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 60007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16626385,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 61007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16890349,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 62007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17179418,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 63007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17457580,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 64007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17785568,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 65007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18098021,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 66007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18404578,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 67007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18703576,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 68007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19027284,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 69007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19259913,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 70007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19468411,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 71007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19749168,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 72007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20012148,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 73007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20332426,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 74007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20635686,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 75007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20923459,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 76007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21212811,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 77007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21517346,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 78007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21735669,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 79007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21853558,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 80007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21974791,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 81007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22105821,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 82007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22246277,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 83007,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22381456,
+          "errors": 158
+        }
+      ],
+      "count_changes": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 0,
+          "errors": 0
+        }
+      ],
+      "first_tuning_complete": {
+        "elapsed_ms": 0,
+        "admitted": 8,
+        "retirement_settled": true,
+        "tuning_complete": true,
+        "entries": 0,
+        "errors": 0
+      },
+      "changes_after_tuning_complete": []
+    },
+    {
+      "label": "3-adaptive-16",
+      "mode": "adaptive",
+      "initial_threads": 16,
+      "outer_wall_seconds": 78.83888108306564,
+      "user_seconds": 30.292716,
+      "system_seconds": 670.1245129999999,
+      "summary": {
+        "seconds": 78.833923,
+        "entries": 22439528,
+        "directories": 3893165,
+        "logical_bytes": 2064705955632,
+        "errors": 158,
+        "admitted": 14,
+        "retirement_settled": true,
+        "tuning_complete": true
+      },
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 0,
+          "errors": 0
+        },
+        {
+          "elapsed_ms": 252,
+          "admitted": 15,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 79853,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 259,
+          "admitted": 15,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 82480,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 510,
+          "admitted": 14,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 174968,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 511,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 175109,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 764,
+          "admitted": 13,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 268996,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 765,
+          "admitted": 13,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 269130,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 1017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 357804,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 2017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 700049,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 3017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1019426,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 4017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1366111,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 5017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1702034,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 6017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2043937,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 7017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2439053,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 8017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2855525,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 9017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3255476,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 10017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3661451,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 11017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4065514,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 12017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4513109,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 13017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4951651,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 14017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5373737,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 15018,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5798851,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 16018,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6261248,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 17018,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6714286,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 18041,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7040372,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 19041,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7125884,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 20042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7312153,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 21042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7613938,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 22042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7969055,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 23042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8318088,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 24042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8617288,
+          "errors": 22
+        },
+        {
+          "elapsed_ms": 25042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8900636,
+          "errors": 32
+        },
+        {
+          "elapsed_ms": 26042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9162515,
+          "errors": 35
+        },
+        {
+          "elapsed_ms": 27042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9370575,
+          "errors": 35
+        },
+        {
+          "elapsed_ms": 28042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9621151,
+          "errors": 132
+        },
+        {
+          "elapsed_ms": 29042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9797427,
+          "errors": 154
+        },
+        {
+          "elapsed_ms": 30042,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10047412,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 31043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10313078,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 32043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10430709,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 33043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10791719,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 34043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11096280,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 35043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11416760,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 36043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11697293,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 37043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11999586,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 38043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12313202,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 39043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12633539,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 40043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12925415,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 41043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13082322,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 42043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13230776,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 43043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13360682,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 44043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13524039,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 45043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13689652,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 46043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13875820,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 47043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14124455,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 48043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14394881,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 49043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14688205,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 50043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14971379,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 51043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15259572,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 52043,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15543619,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 53044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15830376,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 54044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16155808,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 55044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16451091,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 56044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16709696,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 57044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16919670,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 58044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17247531,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 59044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17541184,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 60044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17837431,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 61044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18123980,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 62044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18432132,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 63044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18743659,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 64044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19006216,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 65044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19273524,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 66044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19436165,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 67044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19620291,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 68044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19804003,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 69044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19983803,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 70044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20163536,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 71044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20334441,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 72044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20498489,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 73044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20645733,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 74044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20798349,
+          "errors": 155
+        },
+        {
+          "elapsed_ms": 75044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21120500,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 76044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21460410,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 77044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21803482,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 78044,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22119417,
+          "errors": 158
+        }
+      ],
+      "count_changes": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 0,
+          "errors": 0
+        },
+        {
+          "elapsed_ms": 252,
+          "admitted": 15,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 79853,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 510,
+          "admitted": 14,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 174968,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 764,
+          "admitted": 13,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 268996,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 1017,
+          "admitted": 14,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 357804,
+          "errors": 2
+        }
+      ],
+      "first_tuning_complete": {
+        "elapsed_ms": 1017,
+        "admitted": 14,
+        "retirement_settled": true,
+        "tuning_complete": true,
+        "entries": 357804,
+        "errors": 2
+      },
+      "changes_after_tuning_complete": []
+    },
+    {
+      "label": "4-fixed-16",
+      "mode": "fixed",
+      "initial_threads": 16,
+      "outer_wall_seconds": 78.16387474990916,
+      "user_seconds": 30.498716,
+      "system_seconds": 736.64156,
+      "summary": {
+        "seconds": 78.160033,
+        "entries": 22470044,
+        "directories": 3898222,
+        "logical_bytes": 2064925623797,
+        "errors": 158,
+        "admitted": 16,
+        "retirement_settled": true,
+        "tuning_complete": true
+      },
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 0,
+          "errors": 0
+        },
+        {
+          "elapsed_ms": 1000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 366010,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 2000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 722926,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 3000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1099423,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 4000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1514564,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 5000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1913731,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 6000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2300561,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 7000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2629805,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 8000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3000947,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 9000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3424193,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 10000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3903770,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 11000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4343465,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 12000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4831061,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 13000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5192197,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 14000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5627180,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 15000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6044602,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 16000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6423751,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 17000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6779395,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 18000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7177155,
+          "errors": 2
+        },
+        {
+          "elapsed_ms": 19000,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7592831,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 20001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7926399,
+          "errors": 5
+        },
+        {
+          "elapsed_ms": 21001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8232891,
+          "errors": 14
+        },
+        {
+          "elapsed_ms": 22001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8494219,
+          "errors": 21
+        },
+        {
+          "elapsed_ms": 23001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8795658,
+          "errors": 91
+        },
+        {
+          "elapsed_ms": 24001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9048760,
+          "errors": 141
+        },
+        {
+          "elapsed_ms": 25001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9305581,
+          "errors": 142
+        },
+        {
+          "elapsed_ms": 26001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9604273,
+          "errors": 144
+        },
+        {
+          "elapsed_ms": 27001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9863746,
+          "errors": 145
+        },
+        {
+          "elapsed_ms": 28001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10081994,
+          "errors": 146
+        },
+        {
+          "elapsed_ms": 29001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10281390,
+          "errors": 148
+        },
+        {
+          "elapsed_ms": 30001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10560964,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 31001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10885410,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 32001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11063891,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 33001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11298924,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 34001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11527113,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 35001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11713182,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 36001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11897623,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 37001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12090744,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 38001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12282457,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 39001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12472985,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 40001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12683598,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 41001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12855222,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 42001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13014779,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 43001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13170616,
+          "errors": 156
+        },
+        {
+          "elapsed_ms": 44001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13328770,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 45001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13492800,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 46001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13717700,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 47001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14038204,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 48001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14342380,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 49001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14625397,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 50001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14905674,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 51001,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15214130,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 52002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15477305,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 53002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15771427,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 54002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16061389,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 55002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16332537,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 56002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16596234,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 57002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16867965,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 58002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17129394,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 59002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17438200,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 60002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17711487,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 61002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17991344,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 62002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18225256,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 63002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18464912,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 64002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18737363,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 65002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19034604,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 66002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19327188,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 67002,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19632375,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 68003,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19822754,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 69003,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20094479,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 70003,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20395120,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 71003,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20646774,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 72003,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20912023,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 73003,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21060350,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 74004,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21312642,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 75004,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21539265,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 76004,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21840125,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 77004,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22131496,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 78004,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22420211,
+          "errors": 158
+        }
+      ],
+      "count_changes": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 0,
+          "errors": 0
+        }
+      ],
+      "first_tuning_complete": {
+        "elapsed_ms": 0,
+        "admitted": 16,
+        "retirement_settled": true,
+        "tuning_complete": true,
+        "entries": 0,
+        "errors": 0
+      },
+      "changes_after_tuning_complete": []
+    },
+    {
+      "label": "5-throughput-16",
+      "mode": "throughput",
+      "initial_threads": 16,
+      "outer_wall_seconds": 83.46500349999405,
+      "user_seconds": 24.365424000000004,
+      "system_seconds": 353.8023330000001,
+      "summary": {
+        "seconds": 83.461047,
+        "entries": 22470044,
+        "directories": 3898222,
+        "logical_bytes": 2064924313340,
+        "errors": 158,
+        "admitted": 7,
+        "retirement_settled": true,
+        "tuning_complete": true
+      },
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 0,
+          "errors": 0
+        },
+        {
+          "elapsed_ms": 252,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 61333,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 442,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 96387,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 696,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 181542,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 950,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 273357,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 951,
+          "admitted": 8,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 273561,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1204,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 348819,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1457,
+          "admitted": 4,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 432919,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1458,
+          "admitted": 4,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 433548,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1712,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 491875,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1967,
+          "admitted": 4,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 593278,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 1991,
+          "admitted": 4,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 601460,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2246,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 664008,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2500,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 764453,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2527,
+          "admitted": 6,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 772238,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2782,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 841658,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3034,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 929257,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3117,
+          "admitted": 6,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 957383,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3372,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1027489,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3627,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1110339,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3875,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1185941,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 4130,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1264103,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 4380,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1349412,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 4410,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1358566,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 4665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1430704,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 5665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1699486,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 6665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 1979856,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 7665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2290725,
+          "errors": 7
+        },
+        {
+          "elapsed_ms": 8665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2601514,
+          "errors": 8
+        },
+        {
+          "elapsed_ms": 9665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 2849140,
+          "errors": 8
+        },
+        {
+          "elapsed_ms": 10665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3150677,
+          "errors": 8
+        },
+        {
+          "elapsed_ms": 11665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3469961,
+          "errors": 9
+        },
+        {
+          "elapsed_ms": 12665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 3758276,
+          "errors": 9
+        },
+        {
+          "elapsed_ms": 13665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4035523,
+          "errors": 9
+        },
+        {
+          "elapsed_ms": 14665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4360143,
+          "errors": 9
+        },
+        {
+          "elapsed_ms": 15665,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 4678075,
+          "errors": 9
+        },
+        {
+          "elapsed_ms": 16666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5073690,
+          "errors": 9
+        },
+        {
+          "elapsed_ms": 17666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5449574,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 18666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 5785528,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 19666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6068793,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 20666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6371694,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 21666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 6703636,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 22666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7057177,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 23666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7379343,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 24666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 7698857,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 25666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8025046,
+          "errors": 10
+        },
+        {
+          "elapsed_ms": 26666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8340599,
+          "errors": 11
+        },
+        {
+          "elapsed_ms": 27666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 8678277,
+          "errors": 13
+        },
+        {
+          "elapsed_ms": 28666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9005687,
+          "errors": 21
+        },
+        {
+          "elapsed_ms": 29666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9209844,
+          "errors": 25
+        },
+        {
+          "elapsed_ms": 30666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9465962,
+          "errors": 36
+        },
+        {
+          "elapsed_ms": 31666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9694592,
+          "errors": 61
+        },
+        {
+          "elapsed_ms": 32666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 9881997,
+          "errors": 63
+        },
+        {
+          "elapsed_ms": 33666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10036949,
+          "errors": 63
+        },
+        {
+          "elapsed_ms": 34666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10215936,
+          "errors": 154
+        },
+        {
+          "elapsed_ms": 35666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10323740,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 36666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10581590,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 37666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 10901387,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 38666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11159412,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 39666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11419853,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 40666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11690904,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 41666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 11967422,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 42666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12284990,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 43666,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12552726,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 44667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 12863996,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 45667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13133512,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 46667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13394237,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 47667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13646008,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 48667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 13909965,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 49667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14209131,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 50667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14491637,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 51667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 14768486,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 52667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15062079,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 53667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15333476,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 54667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15539695,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 55667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 15877544,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 56667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16211402,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 57667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16547386,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 58667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 16854269,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 59667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17143696,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 60667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17423014,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 61667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 17756839,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 62667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18073922,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 63667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18408107,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 64667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 18747046,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 65667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19091854,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 66667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19368223,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 67667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 19676562,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 68667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20063250,
+          "errors": 157
+        },
+        {
+          "elapsed_ms": 69667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20391135,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 70667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20718254,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 71667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20859237,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 72667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 20998483,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 73667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21129867,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 74667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21276077,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 75667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21426491,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 76667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21573593,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 77667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21719250,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 78667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21859486,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 79667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 21983760,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 80667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22107863,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 81667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22237851,
+          "errors": 158
+        },
+        {
+          "elapsed_ms": 82667,
+          "admitted": 7,
+          "retirement_settled": true,
+          "tuning_complete": true,
+          "entries": 22368934,
+          "errors": 158
+        }
+      ],
+      "count_changes": [
+        {
+          "elapsed_ms": 0,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 0,
+          "errors": 0
+        },
+        {
+          "elapsed_ms": 252,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 61333,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 696,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 181542,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 950,
+          "admitted": 8,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 273357,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1204,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 348819,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1457,
+          "admitted": 4,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 432919,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1712,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 491875,
+          "errors": 3
+        },
+        {
+          "elapsed_ms": 1967,
+          "admitted": 4,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 593278,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2246,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 664008,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2500,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 764453,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 2782,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 841658,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3034,
+          "admitted": 6,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 929257,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3372,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1027489,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 3627,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1110339,
+          "errors": 4
+        },
+        {
+          "elapsed_ms": 4130,
+          "admitted": 16,
+          "retirement_settled": true,
+          "tuning_complete": false,
+          "entries": 1264103,
+          "errors": 6
+        },
+        {
+          "elapsed_ms": 4380,
+          "admitted": 7,
+          "retirement_settled": false,
+          "tuning_complete": false,
+          "entries": 1349412,
+          "errors": 6
+        }
+      ],
+      "first_tuning_complete": {
+        "elapsed_ms": 4665,
+        "admitted": 7,
+        "retirement_settled": true,
+        "tuning_complete": true,
+        "entries": 1430704,
+        "errors": 6
+      },
+      "changes_after_tuning_complete": []
+    }
+  ]
+}
