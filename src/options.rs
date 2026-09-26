@@ -92,6 +92,32 @@ impl TraversalArgs {
     }
 }
 
+/// Experimental macOS metadata paths for controlled filesystem comparisons.
+#[cfg(target_os = "macos")]
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum MetadataStrategy {
+    /// Existing bulk probe with parallel path-stat fallback (default).
+    Adaptive,
+    /// Keep native bulk metadata unless the filesystem does not support it.
+    Bulk,
+    /// Stat bounded batches relative to an open directory, in enumeration order.
+    DirectoryLocal,
+    /// Stat bounded batches relative to an open directory, sorted by inode number.
+    InodeOrdered,
+}
+
+#[cfg(target_os = "macos")]
+impl From<MetadataStrategy> for dua_core::MacosMetadataStrategy {
+    fn from(value: MetadataStrategy) -> Self {
+        match value {
+            MetadataStrategy::Adaptive => Self::Adaptive,
+            MetadataStrategy::Bulk => Self::Bulk,
+            MetadataStrategy::DirectoryLocal => Self::DirectoryLocal,
+            MetadataStrategy::InodeOrdered => Self::InodeOrdered,
+        }
+    }
+}
+
 #[derive(Debug, Clone, clap::Args)]
 pub struct TraversalArgs {
     #[clap(flatten)]
@@ -181,6 +207,11 @@ pub struct ScanArgs {
     )]
     pub thread_throughput_percent: Option<f64>,
 
+    /// Experimental metadata access strategy [default: adaptive]. Inode order is a logical
+    /// locality heuristic, not physical disk order. Use fixed threads for comparisons.
+    #[cfg(target_os = "macos")]
+    #[clap(long, value_enum, help_heading = "Traversal Options")]
+    pub metadata_strategy: Option<MetadataStrategy>,
     /// Whole-machine CPU ceiling for throughput tuning [default: 80; 0 disables].
     /// Includes other processes; best effort with at least one worker. Fixed/legacy ignore it.
     #[clap(long, env = "DUA_THREAD_SYSTEM_CPU_PERCENT", value_name = "PERCENT",
@@ -280,7 +311,7 @@ pub struct StackArgs {
             "ignore_from"
         ]
     )]
-    #[cfg_attr(target_os = "macos", clap(conflicts_with = "deduplicate_apfs_clones"))]
+    #[cfg_attr(target_os = "macos", clap(conflicts_with_all = ["deduplicate_apfs_clones", "metadata_strategy"]))]
     pub import: Option<PathBuf>,
 
     /// Limit folded output to this many levels. The inputs form the first level.
@@ -347,7 +378,7 @@ pub enum Command {
                 "no_entry_check"
             ]
         )]
-        #[cfg_attr(target_os = "macos", clap(conflicts_with = "deduplicate_apfs_clones"))]
+        #[cfg_attr(target_os = "macos", clap(conflicts_with_all = ["deduplicate_apfs_clones", "metadata_strategy"]))]
         import: Option<PathBuf>,
         /// Do not check entries for presence when listing a directory to avoid slugging performance on slow filesystems.
         #[clap(long, short = 'e', conflicts_with = "import")]
@@ -447,7 +478,7 @@ pub enum Command {
                 "statistics"
             ]
         )]
-        #[cfg_attr(target_os = "macos", clap(conflicts_with = "deduplicate_apfs_clones"))]
+        #[cfg_attr(target_os = "macos", clap(conflicts_with_all = ["deduplicate_apfs_clones", "metadata_strategy"]))]
         import: Option<PathBuf>,
         /// If set, print additional statistics about the file traversal to stderr
         #[clap(long = "stats")]

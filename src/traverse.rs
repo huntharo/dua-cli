@@ -2467,7 +2467,7 @@ mod tests {
                         skip_metadata: false,
                         apfs_clone_metadata: deduplicate,
                         adaptive_threads: None,
-                        throughput_threads: None,
+                        ..crate::TraversalOptions::default()
                     },
                 },
                 vec![path.to_owned()],
