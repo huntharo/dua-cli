@@ -124,4 +124,3 @@ Clippy, Linux musl and Windows MSVC core all-target checks, formatting and diff 
 passed. The CLI and telemetry example built in release mode. Tests cover threshold
 boundaries, repeated votes, bounded refinement and permanent hold under subsequent
 rate changes, plus retirement, restart, cancellation and output backpressure.
-
