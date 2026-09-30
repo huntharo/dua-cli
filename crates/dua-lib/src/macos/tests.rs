@@ -439,6 +439,44 @@ fn bulk_metadata_identifies_clones_and_hard_links() {
 }
 
 #[test]
+fn zero_block_file_roots_keep_the_bulk_real_device() {
+    let directory = tempfile::tempdir().unwrap();
+    let empty = directory.path().join("empty");
+    fs::write(&empty, []).unwrap();
+    assert_eq!(
+        fs::symlink_metadata(&empty).unwrap().blocks(),
+        0,
+        "the fixture must exercise the zero-block path"
+    );
+
+    let bulk = ReadDir::open(Arc::from(directory.path()), 1, options(true))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .metadata
+        .unwrap()
+        .unwrap();
+    let root = Entry::from_path(&empty, options(true))
+        .unwrap()
+        .metadata
+        .unwrap()
+        .unwrap();
+    let delayed = Entry::from_path(&empty, options(true).skip_metadata())
+        .unwrap()
+        .read_metadata(options(true))
+        .metadata
+        .unwrap()
+        .unwrap();
+
+    let real_dev = bulk.real_dev().expect("APFS must report a real device");
+    assert_eq!(root.real_dev(), Some(real_dev));
+    assert_eq!(delayed.real_dev(), Some(real_dev));
+    assert_eq!(root.dev(), bulk.dev());
+    assert_eq!(delayed.dev(), bulk.dev());
+}
+
+#[test]
 fn bulk_device_numbers_match_std_on_devfs() {
     let directory = Path::new("/dev");
     let entry = ReadDir::open(Arc::from(directory), 1, options(false))
