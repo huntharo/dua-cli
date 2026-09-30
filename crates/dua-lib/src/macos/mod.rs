@@ -50,13 +50,12 @@ impl Entry {
         let metadata = fs::symlink_metadata(path)?;
         let file_type = FileType::from_std(metadata.file_type());
         let metadata = (!options.skip_metadata).then(|| {
-            let data_fork =
-                if options.apfs_clone_metadata && metadata.is_file() && metadata.blocks() != 0 {
-                    clone_attributes_at(path, &metadata)
-                } else {
-                    None
-                };
-            Ok(Metadata::from_std(&metadata, data_fork))
+            let apfs = if options.apfs_clone_metadata && metadata.is_file() {
+                apfs_attributes_at(path, &metadata)
+            } else {
+                None
+            };
+            Ok(Metadata::from_std(&metadata, apfs))
         });
         Ok(Self {
             depth: 0,
@@ -73,14 +72,13 @@ impl Entry {
         let path = self.path();
         self.metadata = Some(fs::symlink_metadata(&path).map(|metadata| {
             self.file_type = FileType::from_std(metadata.file_type());
-            let data_fork =
-                if options.apfs_clone_metadata && metadata.is_file() && metadata.blocks() != 0 {
-                    clone_attributes_at(&path, &metadata)
-                } else {
-                    None
-                };
+            let apfs = if options.apfs_clone_metadata && metadata.is_file() {
+                apfs_attributes_at(&path, &metadata)
+            } else {
+                None
+            };
             // Both stat and Apple FTS round the filesystem's total allocation to 512-byte blocks.
-            Metadata::from_std(&metadata, data_fork)
+            Metadata::from_std(&metadata, apfs)
         }));
         self
     }
@@ -150,18 +148,25 @@ pub struct Metadata {
     file_type: FileType,
 }
 
+#[derive(Clone, Copy)]
+struct ApfsAttributes {
+    data_fork: Option<DataFork>,
+    real_device: Option<NonZeroU32>,
+}
+
 impl Metadata {
-    fn from_std(metadata: &fs::Metadata, data_fork: Option<DataFork>) -> Self {
+    fn from_std(metadata: &fs::Metadata, apfs: Option<ApfsAttributes>) -> Self {
         let allocated_size = metadata.blocks().saturating_mul(STAT_BLOCK_BYTES);
         let file_type = FileType::from_std(metadata.file_type());
-        let data_fork =
-            data_fork.filter(|fork| file_type.is_file() && fork.allocated_size <= allocated_size);
+        let data_fork = apfs
+            .and_then(|attributes| attributes.data_fork)
+            .filter(|fork| file_type.is_file() && fork.allocated_size <= allocated_size);
         Self {
             len: metadata.len(),
             allocated_size,
             data_allocated_size: data_fork.map_or(allocated_size, |fork| fork.allocated_size),
             clone_id: data_fork.and_then(|fork| fork.clone_id),
-            real_dev: data_fork.and_then(|fork| fork.real_device),
+            real_dev: apfs.and_then(|attributes| attributes.real_device),
             modified: metadata.modified().ok(),
             dev: metadata.dev(),
             ino: metadata.ino(),
@@ -572,7 +577,7 @@ impl Iterator for ReadDir {
     }
 }
 
-fn clone_attributes_at(path: &Path, metadata: &fs::Metadata) -> Option<DataFork> {
+fn apfs_attributes_at(path: &Path, metadata: &fs::Metadata) -> Option<ApfsAttributes> {
     let path = CString::new(path.as_os_str().as_bytes()).ok()?;
     let mut attributes = root_clone_attributes();
     let mut buffer = AlignedBuffer::<{ size_of::<RootCloneResponse>() }>::new();
@@ -597,7 +602,10 @@ fn clone_attributes_at(path: &Path, metadata: &fs::Metadata) -> Option<DataFork>
     if parsed.device != Some(metadata.dev()) || parsed.inode != Some(metadata.ino()) {
         return None;
     }
-    parsed.data_fork()
+    Some(ApfsAttributes {
+        data_fork: parsed.data_fork(),
+        real_device: parsed.real_device,
+    })
 }
 
 impl ParsedRecord {

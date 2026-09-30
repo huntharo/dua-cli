@@ -96,7 +96,6 @@ pub(super) struct RootCloneResponse {
 #[derive(Clone, Copy)]
 pub(super) struct DataFork {
     pub(super) allocated_size: u64,
-    pub(super) real_device: Option<NonZeroU32>,
     pub(super) clone_id: Option<NonZeroU64>,
 }
 
@@ -163,7 +162,6 @@ impl ParsedRecord {
             .and(self.clone_id);
         Some(DataFork {
             allocated_size,
-            real_device: self.real_device,
             clone_id,
         })
     }
