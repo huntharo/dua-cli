@@ -427,6 +427,15 @@ fn bulk_metadata_identifies_clones_and_hard_links() {
         Some(clone_id),
         "explicit file roots must retain the bulk-enumerated clone identity"
     );
+    assert_eq!(
+        root.real_dev(),
+        cloned.real_dev(),
+        "explicit file roots must retain the bulk-enumerated real device"
+    );
+    assert!(
+        cloned.real_dev().is_some(),
+        "APFS must report a real device"
+    );
 }
 
 #[test]
@@ -443,6 +452,48 @@ fn bulk_device_numbers_match_std_on_devfs() {
         entry.metadata.unwrap().unwrap().dev(),
         expected.dev(),
         "bulk metadata must report the devfs device number returned by stat"
+    );
+}
+
+#[test]
+fn bulk_real_devices_distinguish_grouped_apfs_volumes() {
+    let system = Path::new("/System/Library/CoreServices/SystemVersion.plist");
+    let data = Path::new("/System/Volumes/Data/private/etc/hosts");
+    if !system.exists() || !data.exists() {
+        return;
+    }
+    let system_std = fs::symlink_metadata(system).unwrap();
+    let data_std = fs::symlink_metadata(data).unwrap();
+    if system_std.dev() != data_std.dev() {
+        // This regression needs a macOS volume group with the shared logical device number.
+        return;
+    }
+
+    let bulk_metadata = |path: &Path, include_apfs| {
+        ReadDir::open(Arc::from(path.parent().unwrap()), 1, options(include_apfs))
+            .unwrap()
+            .find(|entry| {
+                entry
+                    .as_ref()
+                    .is_ok_and(|entry| entry.file_name == path.file_name().unwrap())
+            })
+            .expect("the volume fixture must be enumerated")
+            .unwrap()
+            .metadata
+            .unwrap()
+            .unwrap()
+    };
+    let system_bulk = bulk_metadata(system, true);
+    let data_bulk = bulk_metadata(data, true);
+    let system_plain = bulk_metadata(system, false);
+    assert_eq!(system_bulk.dev(), system_std.dev());
+    assert_eq!(data_bulk.dev(), data_std.dev());
+    assert_eq!(system_plain.dev(), system_std.dev());
+    assert_eq!(system_plain.real_dev(), None);
+    assert_ne!(
+        system_bulk.real_dev().expect("System APFS real device"),
+        data_bulk.real_dev().expect("Data APFS real device"),
+        "distinct APFS volumes must have distinct real devices even when dev() is shared"
     );
 }
 
