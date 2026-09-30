@@ -3,7 +3,7 @@
 use std::{
     ffi::{CString, OsString},
     fs, io,
-    num::NonZeroU64,
+    num::{NonZeroU32, NonZeroU64},
     os::{
         fd::{AsRawFd, OwnedFd},
         unix::{
@@ -142,6 +142,7 @@ pub struct Metadata {
     data_allocated_size: u64,
     /// Unlike `ino`, clone identity can be shared by copy-on-write clones with distinct inodes.
     clone_id: Option<NonZeroU64>,
+    real_dev: Option<NonZeroU32>,
     modified: Option<SystemTime>,
     dev: u64,
     ino: u64,
@@ -160,6 +161,7 @@ impl Metadata {
             allocated_size,
             data_allocated_size: data_fork.map_or(allocated_size, |fork| fork.allocated_size),
             clone_id: data_fork.and_then(|fork| fork.clone_id),
+            real_dev: data_fork.and_then(|fork| fork.real_device),
             modified: metadata.modified().ok(),
             dev: metadata.dev(),
             ino: metadata.ino(),
@@ -205,6 +207,16 @@ impl Metadata {
         self.dev
     }
 
+    /// Return the underlying APFS volume device when extended attributes are available.
+    ///
+    /// Unlike [`Self::dev`], this distinguishes volumes in a macOS volume group.
+    /// Returns `None` when the attribute is unavailable, including when APFS metadata is disabled.
+    #[must_use]
+    pub fn real_dev(&self) -> Option<u64> {
+        self.real_dev
+            .map(|device| i64::from(device.get().cast_signed()).cast_unsigned())
+    }
+
     /// Return the filesystem inode number.
     #[must_use]
     pub fn ino(&self) -> u64 {
@@ -228,7 +240,7 @@ impl Metadata {
 
     /// Return the shared APFS content identifier for a file that may have full clones.
     ///
-    /// Clone identifiers are meaningful only within the same filesystem device.
+    /// Clone identifiers are meaningful only within the same APFS volume.
     #[must_use]
     pub fn clone_id(&self) -> Option<NonZeroU64> {
         self.clone_id
@@ -612,6 +624,7 @@ impl ParsedRecord {
             allocated_size,
             data_allocated_size: data_fork.map_or(allocated_size, |fork| fork.allocated_size),
             clone_id: data_fork.and_then(|fork| fork.clone_id),
+            real_dev: self.real_device,
             modified: Some(
                 self.modified
                     .ok_or_else(|| invalid_data("missing modification timestamp"))?,
