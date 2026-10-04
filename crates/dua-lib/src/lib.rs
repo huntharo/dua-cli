@@ -161,7 +161,7 @@ pub struct Options {
     /// without directory-entry types may still require a metadata lookup. This also disables
     /// APFS clone metadata collection.
     pub skip_metadata: bool,
-    /// Collect APFS clone identity and data-fork allocation metadata.
+    /// Collect APFS clone identity, real volume device, and data-fork allocation metadata.
     #[cfg(target_os = "macos")]
     pub apfs_clone_metadata: bool,
 }
