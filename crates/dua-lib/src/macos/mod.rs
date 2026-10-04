@@ -17,6 +17,8 @@ use std::{
 };
 
 mod attributes;
+mod relative;
+pub(crate) use relative::{RELATIVE_STAT_CHUNK_SIZE, RelativeEntry, RelativeReadDir};
 
 use attributes::{
     AlignedBuffer, DataFork, ParsedRecord, RecordHeader, RootCloneResponse, SF_FIRMLINK,

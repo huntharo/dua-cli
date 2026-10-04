@@ -921,7 +921,7 @@ mod tests {
                         skip_metadata: false,
                         apfs_clone_metadata: true,
                         adaptive_threads: None,
-                        throughput_threads: None,
+                        ..dua_core::Options::default()
                     },
                     base_dir: None,
                 },
@@ -946,7 +946,7 @@ mod tests {
                 skip_metadata: false,
                 apfs_clone_metadata: true,
                 adaptive_threads: None,
-                throughput_threads: None,
+                ..dua_core::Options::default()
             },
         )
         .unwrap()
@@ -967,7 +967,7 @@ mod tests {
                     skip_metadata: false,
                     apfs_clone_metadata: true,
                     adaptive_threads: None,
-                    throughput_threads: None,
+                    ..dua_core::Options::default()
                 },
                 base_dir: None,
             },
