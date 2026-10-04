@@ -1633,10 +1633,17 @@ fn walk_clean_candidates(
 ) {
     std::thread::scope(|scope| {
         // One discovery reader and a shared sizing pool, within the existing I/O thread budget.
+        let mut sizing_options = options.metadata_options;
+        if let Some(adaptive) = &mut sizing_options.adaptive_threads {
+            adaptive.max_threads = adaptive.max_threads.saturating_sub(1).max(1);
+        }
+        if let Some(throughput) = &mut sizing_options.throughput_threads {
+            throughput.max_threads = throughput.max_threads.saturating_sub(1).max(1);
+        }
         let (mut roots, walk) = crate::walk::stream_roots(
             options.threads - 1,
             crate::walk::Order::ParentFirst,
-            options.metadata_options,
+            sizing_options,
         );
         let (candidate_tx, candidate_rx) = crossbeam::channel::bounded(32);
         // Bound active candidate staging, not just the queue waiting to reach the walker.
@@ -2464,6 +2471,8 @@ mod tests {
                     metadata_options: crate::TraversalOptions {
                         skip_metadata: false,
                         apfs_clone_metadata: deduplicate,
+                        adaptive_threads: None,
+                        throughput_threads: None,
                     },
                     base_dir: None,
                 },
