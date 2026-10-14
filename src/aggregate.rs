@@ -920,6 +920,7 @@ mod tests {
                     metadata_options: crate::TraversalOptions {
                         skip_metadata: false,
                         apfs_clone_metadata: true,
+                        adaptive_threads: None,
                         ..crate::TraversalOptions::default()
                     },
                     base_dir: None,
@@ -944,6 +945,7 @@ mod tests {
             dua_core::Options {
                 skip_metadata: false,
                 apfs_clone_metadata: true,
+                adaptive_threads: None,
                 ..dua_core::Options::default()
             },
         )
@@ -964,6 +966,7 @@ mod tests {
                 metadata_options: crate::TraversalOptions {
                     skip_metadata: false,
                     apfs_clone_metadata: true,
+                    adaptive_threads: None,
                     ..crate::TraversalOptions::default()
                 },
                 base_dir: None,

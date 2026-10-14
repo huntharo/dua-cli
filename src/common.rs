@@ -244,7 +244,7 @@ impl IgnorePatterns {
 /// Configures a filesystem walk, including output and formatting options.
 #[derive(Clone)]
 pub struct WalkOptions {
-    /// The amount of filesystem worker threads to use.
+    /// Initial filesystem worker count; fixed when `metadata_options.adaptive_threads` is `None`.
     pub threads: usize,
     /// If `true`, count every hard-link occurrence independently.
     pub count_hard_links: bool,
@@ -263,7 +263,7 @@ pub struct WalkOptions {
     /// of being entered with `set_current_dir` - e.g. beyond `MAX_PATH` on Windows.
     /// `None` uses the process working directory.
     pub base_dir: Option<PathBuf>,
-    /// Platform-specific metadata requested during traversal.
+    /// Platform-specific metadata and optional adaptive worker scheduling.
     pub metadata_options: crate::TraversalOptions,
 }
 
