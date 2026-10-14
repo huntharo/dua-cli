@@ -61,13 +61,6 @@ fn parse_snapshot_compression_level(value: &str) -> Result<i32, String> {
     }
 }
 
-/// Enough parallelism to keep filesystem work moving without saturating macOS with syscalls.
-#[cfg(target_os = "macos")]
-pub(crate) const DEFAULT_THREADS: usize = 8;
-
-#[cfg(not(target_os = "macos"))]
-pub(crate) const DEFAULT_THREADS: usize = 0;
-
 #[cfg(target_os = "linux")]
 pub(crate) const DEFAULT_IGNORE_DIRS: &[&str] = &["/proc", "/dev", "/sys", "/run"];
 
@@ -117,24 +110,82 @@ pub struct TraversalArgs {
 }
 
 #[derive(Debug, Clone, clap::Args)]
-#[cfg_attr(
-    target_os = "macos",
-    expect(
-        clippy::struct_excessive_bools,
-        reason = "independent command-line switches map directly to booleans"
-    )
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent command-line switches map directly to booleans"
 )]
 pub struct ScanArgs {
-    /// The number of threads to use. Defaults to 8 on macOS and 0 elsewhere.
-    /// Set to 0 to use the number of logical processors, or 1 to use a single thread.
+    /// Initial worker count; adaptive tuning reduces it after throughput probes.
+    /// Omitted or 0 uses available logical processors. Use --fixed-threads to disable tuning.
     #[clap(
         short = 't',
         long = "threads",
-        default_value_t = DEFAULT_THREADS,
         env = "DUA_THREADS",
         help_heading = "Traversal Options"
     )]
-    pub threads: usize,
+    pub threads: Option<usize>,
+
+    /// Disable adaptive tuning and keep --threads (or its default) fixed.
+    /// Adaptive caps, intervals, and thresholds are ignored in this mode.
+    #[clap(long, env = "DUA_FIXED_THREADS", help_heading = "Traversal Options")]
+    pub fixed_threads: bool,
+
+    /// Cap the initial adaptive count [default: no additional cap; at least 1].
+    #[clap(
+        long,
+        env = "DUA_MAX_THREADS",
+        value_parser = clap::builder::RangedU64ValueParser::<usize>::new().range(1..),
+        help_heading = "Traversal Options"
+    )]
+    pub max_threads: Option<usize>,
+
+    /// Milliseconds to measure aggregate throughput at the initial count [default: 250].
+    #[clap(
+        long,
+        env = "DUA_THREAD_BASELINE_MS",
+        value_parser = clap::value_parser!(u64).range(1..),
+        help_heading = "Traversal Options"
+    )]
+    pub thread_baseline_ms: Option<u64>,
+
+    /// Milliseconds to measure each candidate after retiring workers finish [default: 250].
+    #[clap(
+        long,
+        env = "DUA_THREAD_ADJUSTMENT_MS",
+        value_parser = clap::value_parser!(u64).range(1..),
+        help_heading = "Traversal Options"
+    )]
+    pub thread_adjustment_ms: Option<u64>,
+
+    /// Select legacy tuning: accept n-1 only if loss < PERCENT/100 * `T_n/n`.
+    /// `T_n` is aggregate entries/second at accepted count n. Equality rejects; first rejection
+    /// restores n and stops tuning. Each accepted candidate supplies the next reference rate.
+    #[clap(
+        long,
+        env = "DUA_THREAD_LOSS_PERCENT",
+        value_name = "PERCENT",
+        value_parser = parse_percentage,
+        help_heading = "Traversal Options"
+    )]
+    pub thread_loss_percent: Option<f64>,
+
+    /// Coarse count reduction retaining PERCENT of initial entries/second [default: 80].
+    /// Measure once, halve, repeat candidate windows in place, then bisect. Measures throughput, not disk usage.
+    /// Uses the same cap and intervals; takes precedence over --thread-loss-percent.
+    #[clap(
+        long,
+        env = "DUA_THREAD_THROUGHPUT_PERCENT",
+        value_name = "PERCENT",
+        value_parser = parse_percentage,
+        help_heading = "Traversal Options"
+    )]
+    pub thread_throughput_percent: Option<f64>,
+
+    /// Whole-machine CPU ceiling for throughput tuning [default: 80; 0 disables].
+    /// Includes other processes; best effort with at least one worker. Fixed/legacy ignore it.
+    #[clap(long, env = "DUA_THREAD_SYSTEM_CPU_PERCENT", value_name = "PERCENT",
+        value_parser = parse_percentage, help_heading = "Traversal Options")]
+    pub thread_system_cpu_percent: Option<f64>,
 
     /// Display apparent size instead of disk usage.
     #[clap(
@@ -215,6 +266,13 @@ pub struct StackArgs {
         conflicts_with_all = [
             "input",
             "threads",
+            "fixed_threads",
+            "max_threads",
+            "thread_baseline_ms",
+            "thread_adjustment_ms",
+            "thread_loss_percent",
+            "thread_throughput_percent",
+            "thread_system_cpu_percent",
             "apparent_size",
             "count_hard_links",
             "stay_on_filesystem",
@@ -274,6 +332,13 @@ pub enum Command {
             conflicts_with_all = [
                 "input",
                 "threads",
+                "fixed_threads",
+                "max_threads",
+                "thread_baseline_ms",
+                "thread_adjustment_ms",
+                "thread_loss_percent",
+                "thread_throughput_percent",
+            "thread_system_cpu_percent",
                 "apparent_size",
                 "count_hard_links",
                 "stay_on_filesystem",
@@ -367,6 +432,13 @@ pub enum Command {
             conflicts_with_all = [
                 "input",
                 "threads",
+                "fixed_threads",
+                "max_threads",
+                "thread_baseline_ms",
+                "thread_adjustment_ms",
+                "thread_loss_percent",
+                "thread_throughput_percent",
+            "thread_system_cpu_percent",
                 "apparent_size",
                 "count_hard_links",
                 "stay_on_filesystem",
@@ -439,6 +511,52 @@ mod tests {
     #[test]
     fn clap() {
         Args::command().debug_assert();
+    }
+
+    #[test]
+    fn adaptive_options_validate_ranges() {
+        for (flag, invalid) in [
+            ("--max-threads", "0"),
+            ("--thread-baseline-ms", "0"),
+            ("--thread-adjustment-ms", "0"),
+            ("--thread-loss-percent", "101"),
+            ("--thread-loss-percent", "NaN"),
+            ("--thread-loss-percent", "inf"),
+            ("--thread-throughput-percent", "101"),
+            ("--thread-throughput-percent", "NaN"),
+            ("--thread-throughput-percent", "inf"),
+            ("--thread-system-cpu-percent", "101"),
+            ("--thread-system-cpu-percent", "NaN"),
+        ] {
+            assert!(Args::try_parse_from(["dua", flag, invalid]).is_err());
+        }
+        for percentage in ["0", "60", "100"] {
+            Args::try_parse_from(["dua", "--thread-loss-percent", percentage])
+                .expect("inclusive percentage bounds");
+        }
+    }
+
+    #[test]
+    fn snapshot_import_rejects_adaptive_tuning() {
+        for command in ["aggregate", "stacks", "flamegraph"] {
+            assert!(
+                Args::try_parse_from(["dua", command, "--import", "scan.dua", "--fixed-threads"])
+                    .is_err()
+            );
+            for flag in [
+                "--max-threads",
+                "--thread-baseline-ms",
+                "--thread-adjustment-ms",
+                "--thread-loss-percent",
+                "--thread-throughput-percent",
+                "--thread-system-cpu-percent",
+            ] {
+                let error =
+                    Args::try_parse_from(["dua", command, "--import", "scan.dua", flag, "2"])
+                        .expect_err("snapshots do not accept scan tuning");
+                assert_eq!(error.kind(), clap::error::ErrorKind::ArgumentConflict);
+            }
+        }
     }
 
     #[test]
