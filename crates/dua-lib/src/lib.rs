@@ -82,6 +82,8 @@ use windows::{ReadDir as NativeReadDir, read_dir_types};
 #[cfg(any(windows, target_os = "macos"))]
 enum ReadDir {
     Metadata(NativeReadDir),
+    #[cfg(target_os = "macos")]
+    Relative(macos::RelativeReadDir, Options),
     FileTypes {
         entries: fs::ReadDir,
         parent_path: Arc<Path>,
@@ -99,6 +101,11 @@ impl ReadDir {
                 depth,
             })
         } else {
+            #[cfg(target_os = "macos")]
+            if options.macos_metadata_strategy.is_relative() {
+                return macos::RelativeReadDir::open(path, depth, options.macos_metadata_strategy)
+                    .map(|reader| Self::Relative(reader, options));
+            }
             NativeReadDir::open(path, depth, options).map(Self::Metadata)
         }
     }
@@ -111,6 +118,10 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Metadata(reader) => reader.next(),
+            #[cfg(target_os = "macos")]
+            Self::Relative(reader, options) => reader
+                .next()
+                .map(|entry| entry.map(|entry| entry.read_metadata(*options))),
             Self::FileTypes {
                 entries,
                 parent_path,
@@ -158,6 +169,29 @@ pub enum Order {
     ParentFirst,
 }
 
+/// Opt-in macOS metadata collection strategies. Sibling completion order is unspecified.
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum MacosMetadataStrategy {
+    /// Preserve native bulk enumeration and its existing off-CPU probe and parallel fallback.
+    #[default]
+    Adaptive,
+    /// Always use native bulk metadata, retaining unsupported-filesystem fallbacks.
+    Bulk,
+    /// Submit fd-relative metadata jobs in directory enumeration order.
+    DirectoryLocal,
+    /// Stably sort each bounded enumeration buffer by inode ID before submitting metadata jobs.
+    /// Inode IDs are an ordering experiment, not physical storage addresses.
+    InodeOrdered,
+}
+
+#[cfg(target_os = "macos")]
+impl MacosMetadataStrategy {
+    fn is_relative(self) -> bool {
+        matches!(self, Self::DirectoryLocal | Self::InodeOrdered)
+    }
+}
+
 /// Metadata, worker scheduling, and result buffering requested during traversal.
 #[derive(Clone, Copy, Debug)]
 pub struct Options {
@@ -175,6 +209,12 @@ pub struct Options {
     /// Collect APFS clone identity and data-fork allocation metadata.
     #[cfg(target_os = "macos")]
     pub apfs_clone_metadata: bool,
+    /// macOS metadata strategy; the default preserves existing adaptive bulk behavior.
+    /// Relative strategies use identical 4096-entry buffers and 64-entry metadata jobs.
+    /// With clone metadata enabled they use ordinary path metadata to preserve clone accounting.
+    /// Ignored when `skip_metadata` is enabled. Forced strategies do not require APFS.
+    #[cfg(target_os = "macos")]
+    pub macos_metadata_strategy: MacosMetadataStrategy,
     /// Result queue capacity per worker, defaulting to `2`.
     ///
     /// Workers share a queue with this capacity multiplied by the worker count and block when
@@ -191,6 +231,8 @@ impl Default for Options {
             throughput_threads: None,
             #[cfg(target_os = "macos")]
             apfs_clone_metadata: false,
+            #[cfg(target_os = "macos")]
+            macos_metadata_strategy: MacosMetadataStrategy::default(),
             queued_batches_per_worker: 2,
         }
     }
@@ -276,6 +318,13 @@ enum Job {
         /// Depth to be assigned to entries read from `path`; always at least `1`.
         /// The directory at `path` is one level shallower.
         entry_depth: usize,
+    },
+    /// Fetch metadata relative to the directory descriptor retained by these entries.
+    #[cfg(target_os = "macos")]
+    StatRelative {
+        root: Arc<Root>,
+        directory_id: usize,
+        entries: Vec<macos::RelativeEntry>,
     },
     /// Fetch metadata for a chunk of entries from a completed directory read.
     #[cfg(not(windows))]
@@ -468,7 +517,8 @@ pub struct Walk {
 }
 
 /// Read a directory using native enumeration, collecting metadata unless
-/// [`Options::skip_metadata`] is set.
+/// [`Options::skip_metadata`] is set. On macOS, the requested metadata strategy also applies
+/// here, with metadata read synchronously because this iterator has no worker pool.
 ///
 /// Entries have depth zero so they can be passed directly to [`walk_root_entries`] without
 /// querying their paths again. Directory-open errors are returned immediately; later enumeration
@@ -1361,6 +1411,22 @@ fn run_job(job: Job, worker: &Worker<Job>, shared: &PoolShared) {
                 read_dir_parent_first(&root, path, directory_id, entry_depth, worker, shared);
             }
         }
+        #[cfg(target_os = "macos")]
+        Job::StatRelative {
+            root,
+            directory_id,
+            entries,
+        } => {
+            publish_stat_entries(
+                &root,
+                directory_id,
+                entries
+                    .into_iter()
+                    .map(|entry| Ok(entry.read_metadata(shared.options))),
+                worker,
+                shared,
+            );
+        }
         #[cfg(not(windows))]
         Job::Stat {
             root,
@@ -1479,6 +1545,11 @@ fn read_dir_native(
     worker: &Worker<Job>,
     shared: &PoolShared,
 ) {
+    #[cfg(target_os = "macos")]
+    if !shared.options.skip_metadata && shared.options.macos_metadata_strategy.is_relative() {
+        read_dir_relative(root, path, directory_id, depth, worker, shared);
+        return;
+    }
     let dir_entries = match ReadDir::open(Arc::clone(&path), depth, shared.options) {
         Ok(entries) => entries,
         Err(err) => {
@@ -1491,7 +1562,8 @@ fn read_dir_native(
     let dir_entries = {
         let mut dir_entries = dir_entries;
         let mut prefix = Vec::new();
-        if shared.active_workers.load(AtomicOrdering::Relaxed) > 1
+        if shared.options.macos_metadata_strategy == MacosMetadataStrategy::Adaptive
+            && shared.active_workers.load(AtomicOrdering::Relaxed) > 1
             && let ReadDir::Metadata(reader) = &mut dir_entries
         {
             prefix = reader.probe_metadata();
@@ -1577,6 +1649,59 @@ fn read_dir_native(
     finish_pending(root, shared);
 }
 
+/// Both locality candidates differ only in the reader's bounded, stable inode sorting.
+#[cfg(target_os = "macos")]
+fn read_dir_relative(
+    root: &Arc<Root>,
+    path: Arc<Path>,
+    directory_id: usize,
+    depth: usize,
+    worker: &Worker<Job>,
+    shared: &PoolShared,
+) {
+    let reader = macos::RelativeReadDir::open(path, depth, shared.options.macos_metadata_strategy);
+    let mut reader = match reader {
+        Ok(reader) => reader,
+        Err(error) => {
+            publish_directory(root, Err(error), Vec::new(), worker, shared);
+            finish_pending(root, shared);
+            return;
+        }
+    };
+    while !shared.stop.load(AtomicOrdering::Relaxed) {
+        let mut entries = Vec::with_capacity(macos::RELATIVE_STAT_CHUNK_SIZE);
+        // Errors are delivered as listing errors, separately from each entry's metadata error.
+        for _ in 0..macos::RELATIVE_STAT_CHUNK_SIZE {
+            if shared.stop.load(AtomicOrdering::Relaxed) {
+                break;
+            }
+            match reader.next() {
+                Some(Ok(entry)) => entries.push(entry),
+                Some(Err(error)) => {
+                    if !publish_directory(root, Ok(vec![Err(error)]), Vec::new(), worker, shared) {
+                        break;
+                    }
+                }
+                None => break,
+            }
+        }
+        if entries.is_empty() {
+            break;
+        }
+        schedule_stat_job(
+            root,
+            Job::StatRelative {
+                root: Arc::clone(root),
+                directory_id,
+                entries,
+            },
+            worker,
+            shared,
+        );
+    }
+    finish_pending(root, shared);
+}
+
 #[cfg(not(windows))]
 fn schedule_stat_entries(
     root: &Arc<Root>,
@@ -1594,6 +1719,11 @@ fn schedule_stat_entries(
         entry_depth,
         entries,
     };
+    schedule_stat_job(root, job, worker, shared);
+}
+
+#[cfg(not(windows))]
+fn schedule_stat_job(root: &Root, job: Job, worker: &Worker<Job>, shared: &PoolShared) {
     root.pending.fetch_add(1, AtomicOrdering::Relaxed);
     if worker.len() >= MAX_QUEUED_STAT_JOBS {
         run_job(job, worker, shared);
@@ -1615,14 +1745,27 @@ fn stat_entries(
 ) {
     #[cfg(target_os = "macos")]
     let _ = (path, depth);
+    let entries = entries.into_iter().map(|entry| {
+        #[cfg(target_os = "macos")]
+        let entry = Ok(entry.read_metadata(shared.options));
+        #[cfg(not(target_os = "macos"))]
+        let entry = Entry::from_dir_entry(depth, Arc::clone(&path), entry, shared.options);
+        entry
+    });
+    publish_stat_entries(root, directory_id, entries, worker, shared);
+}
+
+#[cfg(not(windows))]
+fn publish_stat_entries(
+    root: &Arc<Root>,
+    directory_id: usize,
+    entries: impl Iterator<Item = io::Result<Entry>>,
+    worker: &Worker<Job>,
+    shared: &PoolShared,
+) {
     let mut jobs = Vec::new();
     let entries = entries
-        .into_iter()
         .map(|entry| {
-            #[cfg(target_os = "macos")]
-            let entry = Ok(entry.read_metadata(shared.options));
-            #[cfg(not(target_os = "macos"))]
-            let entry = Entry::from_dir_entry(depth, Arc::clone(&path), entry, shared.options);
             entry.map(|mut entry| {
                 assign_directory_ids(&mut entry, directory_id, shared);
                 if entry.file_type.is_dir() && (root.descend)(root.index, &entry) {

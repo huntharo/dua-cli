@@ -182,6 +182,20 @@ because collecting the additional metadata reduces traversal performance.
 Files that share only some blocks are not deduplicated, and `--apparent-size`
 still reports each file's logical length.
 
+On macOS, `--metadata-strategy adaptive|bulk|directory-local|inode-ordered` exposes
+experimental metadata access strategies. The default `adaptive` retains the existing
+bulk-metadata probe and parallel path-stat fallback. `bulk` skips that timing-based
+switch. The two relative strategies stat batches through an open directory descriptor;
+`inode-ordered` additionally sorts bounded buffers by inode ID, a logical APFS locality
+heuristic rather than a physical disk address. Thread tuning is independent of this option.
+
+Use fixed threads for comparisons. The [filesystem-aware calibration tool](etc/profiling/APFS-LOCALITY.md)
+compares repeated equivalent scans and selects by observed throughput and CPU cost.
+The initial APFS reference-tree experiment retained `adaptive`: inode sorting reduced
+reads versus the otherwise identical directory-local candidate, but neither new path
+beat the existing default overall. No production default changes automatically from
+a calibration run.
+
 ### Tree output
 
 By default `aggregate` prints a flat listing. Pass `--depth N` to instead print an indented tree

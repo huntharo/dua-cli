@@ -1,0 +1,747 @@
+{
+  "filesystem": {
+    "block_size": 4096,
+    "mount": "/System/Volumes/Data",
+    "source": "/dev/disk3s5",
+    "type": "apfs"
+  },
+  "root": "/Users/huntharo/github",
+  "threads": 8,
+  "harness_sha256": "f0317f9685ea899500da9da2206dc9172ea9a933848cdc65053c85e36159730d",
+  "repetitions": 3,
+  "rows": [
+    {
+      "strategy": "adaptive",
+      "repeat": 0,
+      "outer_seconds": 6.598459333064966,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 202803,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 357803,
+          "disk_read_bytes": 634867712,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 102292,
+          "runnable_seconds": 37.91642958333333,
+          "unix_syscalls": 559637
+        },
+        "proc_before": {
+          "context_switches": 8,
+          "disk_read_bytes": 0,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0007012916666666666,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "adaptive",
+        "system_seconds": 16.649428999999998,
+        "threads": 8,
+        "user_seconds": 0.914085,
+        "voluntary_switches": 154992,
+        "wall_seconds": 6.5861026670000005
+      },
+      "device_delta": {
+        "Bytes (Read)": 984903680,
+        "Bytes (Write)": 85475328,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 199045,
+        "Operations (Write)": 4198,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 22293232245,
+        "Total Time (Write)": 143428052
+      }
+    },
+    {
+      "strategy": "bulk",
+      "repeat": 0,
+      "outer_seconds": 9.81784162495751,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 96156,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 229609,
+          "disk_read_bytes": 546529280,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 62584,
+          "runnable_seconds": 24.227818916666667,
+          "unix_syscalls": 230636
+        },
+        "proc_before": {
+          "context_switches": 27,
+          "disk_read_bytes": 0,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.010168875,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "bulk",
+        "system_seconds": 11.721368,
+        "threads": 8,
+        "user_seconds": 0.47996500000000003,
+        "voluntary_switches": 133426,
+        "wall_seconds": 9.799912333
+      },
+      "device_delta": {
+        "Bytes (Read)": 996196352,
+        "Bytes (Write)": 168644608,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 174743,
+        "Operations (Write)": 9840,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 33832935404,
+        "Total Time (Write)": 379838857
+      }
+    },
+    {
+      "strategy": "directory-local",
+      "repeat": 0,
+      "outer_seconds": 4.057375458069146,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 254004,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 415806,
+          "disk_read_bytes": 662724608,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 65928,
+          "runnable_seconds": 21.518173125,
+          "unix_syscalls": 961810
+        },
+        "proc_before": {
+          "context_switches": 7,
+          "disk_read_bytes": 4096,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0004042916666666667,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "directory-local",
+        "system_seconds": 16.179377,
+        "threads": 8,
+        "user_seconds": 0.678129,
+        "voluntary_switches": 161795,
+        "wall_seconds": 4.053528667
+      },
+      "device_delta": {
+        "Bytes (Read)": 754688000,
+        "Bytes (Write)": 9416704,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 175379,
+        "Operations (Write)": 516,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 16188635344,
+        "Total Time (Write)": 14581836
+      }
+    },
+    {
+      "strategy": "inode-ordered",
+      "repeat": 0,
+      "outer_seconds": 3.7089373749913648,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 242057,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 371406,
+          "disk_read_bytes": 529731584,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 63803,
+          "runnable_seconds": 21.573334083333332,
+          "unix_syscalls": 961890
+        },
+        "proc_before": {
+          "context_switches": 23,
+          "disk_read_bytes": 4096,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0016584166666666668,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "inode-ordered",
+        "system_seconds": 16.516372,
+        "threads": 8,
+        "user_seconds": 0.7009690000000001,
+        "voluntary_switches": 129326,
+        "wall_seconds": 3.704502917
+      },
+      "device_delta": {
+        "Bytes (Read)": 706142208,
+        "Bytes (Write)": 2646016,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 146998,
+        "Operations (Write)": 380,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 11661054695,
+        "Total Time (Write)": 10542169
+      }
+    },
+    {
+      "strategy": "adaptive",
+      "repeat": 1,
+      "outer_seconds": 2.9311204160330817,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 222045,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 348048,
+          "disk_read_bytes": 516022272,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 135088,
+          "runnable_seconds": 16.029802583333336,
+          "unix_syscalls": 555569
+        },
+        "proc_before": {
+          "context_switches": 24,
+          "disk_read_bytes": 12288,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0020955833333333334,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "adaptive",
+        "system_seconds": 12.115336999999998,
+        "threads": 8,
+        "user_seconds": 0.685141,
+        "voluntary_switches": 125979,
+        "wall_seconds": 2.926446833
+      },
+      "device_delta": {
+        "Bytes (Read)": 569761792,
+        "Bytes (Write)": 5046272,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 135794,
+        "Operations (Write)": 32,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 9971536124,
+        "Total Time (Write)": 875407
+      }
+    },
+    {
+      "strategy": "inode-ordered",
+      "repeat": 1,
+      "outer_seconds": 3.6455437920521945,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 233629,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 366721,
+          "disk_read_bytes": 545120256,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 63786,
+          "runnable_seconds": 20.20080995833333,
+          "unix_syscalls": 962275
+        },
+        "proc_before": {
+          "context_switches": 8,
+          "disk_read_bytes": 4096,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0005278333333333334,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "inode-ordered",
+        "system_seconds": 15.885361,
+        "threads": 8,
+        "user_seconds": 0.675222,
+        "voluntary_switches": 133084,
+        "wall_seconds": 3.641761667
+      },
+      "device_delta": {
+        "Bytes (Read)": 623439872,
+        "Bytes (Write)": 2916352,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 143769,
+        "Operations (Write)": 456,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 12353807108,
+        "Total Time (Write)": 13806395
+      }
+    },
+    {
+      "strategy": "directory-local",
+      "repeat": 1,
+      "outer_seconds": 3.9445720410440117,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 227870,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 390983,
+          "disk_read_bytes": 668094464,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 63025,
+          "runnable_seconds": 20.936406791666666,
+          "unix_syscalls": 962255
+        },
+        "proc_before": {
+          "context_switches": 5,
+          "disk_read_bytes": 0,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.000203125,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "directory-local",
+        "system_seconds": 15.871947,
+        "threads": 8,
+        "user_seconds": 0.653315,
+        "voluntary_switches": 163108,
+        "wall_seconds": 3.9410205830000002
+      },
+      "device_delta": {
+        "Bytes (Read)": 840413184,
+        "Bytes (Write)": 19599360,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 182948,
+        "Operations (Write)": 947,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 19769207626,
+        "Total Time (Write)": 26840049
+      }
+    },
+    {
+      "strategy": "bulk",
+      "repeat": 1,
+      "outer_seconds": 10.770729916985147,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 102228,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 234363,
+          "disk_read_bytes": 541114368,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 69808,
+          "runnable_seconds": 18.85884491666667,
+          "unix_syscalls": 231648
+        },
+        "proc_before": {
+          "context_switches": 28,
+          "disk_read_bytes": 0,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0026615,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "bulk",
+        "system_seconds": 10.599058000000001,
+        "threads": 8,
+        "user_seconds": 0.426099,
+        "voluntary_switches": 132107,
+        "wall_seconds": 10.765213040999999
+      },
+      "device_delta": {
+        "Bytes (Read)": 896471040,
+        "Bytes (Write)": 44838912,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 164257,
+        "Operations (Write)": 1527,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 15639499668,
+        "Total Time (Write)": 44519199
+      }
+    },
+    {
+      "strategy": "directory-local",
+      "repeat": 2,
+      "outer_seconds": 8.000031333998777,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 191234,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 348607,
+          "disk_read_bytes": 644554752,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 47731,
+          "runnable_seconds": 50.87891904166666,
+          "unix_syscalls": 963077
+        },
+        "proc_before": {
+          "context_switches": 17,
+          "disk_read_bytes": 4096,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.002734625,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "directory-local",
+        "system_seconds": 19.97534,
+        "threads": 8,
+        "user_seconds": 0.91793,
+        "voluntary_switches": 157356,
+        "wall_seconds": 7.992584834
+      },
+      "device_delta": {
+        "Bytes (Read)": 1057419264,
+        "Bytes (Write)": 37015552,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 202120,
+        "Operations (Write)": 2429,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 22007559071,
+        "Total Time (Write)": 82857398
+      }
+    },
+    {
+      "strategy": "inode-ordered",
+      "repeat": 2,
+      "outer_seconds": 4.414546041982248,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 276663,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 420139,
+          "disk_read_bytes": 587591680,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 62427,
+          "runnable_seconds": 25.299844458333332,
+          "unix_syscalls": 962324
+        },
+        "proc_before": {
+          "context_switches": 21,
+          "disk_read_bytes": 0,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0030477916666666665,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "inode-ordered",
+        "system_seconds": 18.669851,
+        "threads": 8,
+        "user_seconds": 0.771552,
+        "voluntary_switches": 143455,
+        "wall_seconds": 4.408675416
+      },
+      "device_delta": {
+        "Bytes (Read)": 709922816,
+        "Bytes (Write)": 15532032,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 159886,
+        "Operations (Write)": 1274,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 43322737528,
+        "Total Time (Write)": 34379874
+      }
+    },
+    {
+      "strategy": "adaptive",
+      "repeat": 2,
+      "outer_seconds": 2.861551000038162,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 219758,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 338898,
+          "disk_read_bytes": 487956480,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 129938,
+          "runnable_seconds": 15.892591375,
+          "unix_syscalls": 559826
+        },
+        "proc_before": {
+          "context_switches": 11,
+          "disk_read_bytes": 4096,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0006109166666666666,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "adaptive",
+        "system_seconds": 11.644544,
+        "threads": 8,
+        "user_seconds": 0.709176,
+        "voluntary_switches": 119129,
+        "wall_seconds": 2.8575377079999997
+      },
+      "device_delta": {
+        "Bytes (Read)": 509009920,
+        "Bytes (Write)": 356352,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 124143,
+        "Operations (Write)": 25,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 11722590168,
+        "Total Time (Write)": 425661
+      }
+    },
+    {
+      "strategy": "bulk",
+      "repeat": 2,
+      "outer_seconds": 7.384437250089832,
+      "result": {
+        "count": {
+          "allocated_bytes": 235406057472,
+          "bytes": 234038233698,
+          "devices": [
+            16777234
+          ],
+          "dirs": 36176,
+          "entries": 660862,
+          "errors": 0
+        },
+        "involuntary_switches": 109007,
+        "passes": 1,
+        "proc_after": {
+          "context_switches": 248430,
+          "disk_read_bytes": 570925056,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 77176,
+          "runnable_seconds": 10.449523541666666,
+          "unix_syscalls": 231153
+        },
+        "proc_before": {
+          "context_switches": 39,
+          "disk_read_bytes": 4096,
+          "disk_write_bytes": 0,
+          "mach_syscalls": 127,
+          "runnable_seconds": 0.0028849166666666667,
+          "unix_syscalls": 160
+        },
+        "roots": {},
+        "strategy": "bulk",
+        "system_seconds": 8.206991,
+        "threads": 8,
+        "user_seconds": 0.38926700000000003,
+        "voluntary_switches": 139384,
+        "wall_seconds": 7.379612417
+      },
+      "device_delta": {
+        "Bytes (Read)": 929583104,
+        "Bytes (Write)": 30220288,
+        "Errors (Read)": 0,
+        "Errors (Write)": 0,
+        "Latency Time (Read)": 0,
+        "Latency Time (Write)": 0,
+        "Operations (Read)": 174752,
+        "Operations (Write)": 1435,
+        "Retries (Read)": 0,
+        "Retries (Write)": 0,
+        "Total Time (Read)": 21798932193,
+        "Total Time (Write)": 35817476
+      }
+    }
+  ],
+  "selection": {
+    "throughput_fraction": 1.0,
+    "selected": "adaptive",
+    "strategies": [
+      {
+        "strategy": "adaptive",
+        "runs": 3,
+        "median_seconds": 2.926446833,
+        "median_cpu_seconds": 12.800477999999998,
+        "entries_per_second": 225824.02405121707,
+        "cpu_seconds_per_entry": 1.936936607037475e-05,
+        "median_process_read_bytes": 516009984,
+        "min_seconds": 2.8575377079999997,
+        "max_seconds": 6.5861026670000005
+      },
+      {
+        "strategy": "bulk",
+        "runs": 3,
+        "median_seconds": 9.799912333,
+        "median_cpu_seconds": 11.025157000000002,
+        "entries_per_second": 67435.50121102904,
+        "cpu_seconds_per_entry": 1.668299433164564e-05,
+        "median_process_read_bytes": 546529280,
+        "min_seconds": 7.379612417,
+        "max_seconds": 10.765213040999999
+      },
+      {
+        "strategy": "directory-local",
+        "runs": 3,
+        "median_seconds": 4.053528667,
+        "median_cpu_seconds": 16.857505999999997,
+        "entries_per_second": 163033.75510332859,
+        "cpu_seconds_per_entry": 2.5508360293071772e-05,
+        "median_process_read_bytes": 662720512,
+        "min_seconds": 3.9410205830000002,
+        "max_seconds": 7.992584834
+      },
+      {
+        "strategy": "inode-ordered",
+        "runs": 3,
+        "median_seconds": 3.704502917,
+        "median_cpu_seconds": 17.217341,
+        "entries_per_second": 178394.24473585858,
+        "cpu_seconds_per_entry": 2.6052853697141008e-05,
+        "median_process_read_bytes": 545116160,
+        "min_seconds": 3.641761667,
+        "max_seconds": 4.408675416
+      }
+    ],
+    "count": {
+      "allocated_bytes": 235406057472,
+      "bytes": 234038233698,
+      "devices": [
+        16777234
+      ],
+      "dirs": 36176,
+      "entries": 660862,
+      "errors": 0
+    },
+    "rule": "lowest median CPU per entry within fraction of best observed throughput"
+  }
+}
