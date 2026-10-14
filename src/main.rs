@@ -565,6 +565,10 @@ fn write_flamegraph(
     output: Option<PathBuf>,
     options: &mut inferno::flamegraph::Options<'_>,
 ) -> Result<PathBuf> {
+    // Zero-sized entries are omitted from folded stacks, and inferno writes an error SVG for empty input.
+    if stacks.is_empty() {
+        bail!("No disk usage to render as a flame graph");
+    }
     let stacks = String::from_utf8(stacks).expect("folded stacks are valid UTF-8");
     if let Some(path) = output {
         let file = fs::File::create(&path)
@@ -789,6 +793,7 @@ fn walk_options_from(traversal: &options::ScanArgs) -> Result<dua::WalkOptions> 
             skip_metadata: false,
             #[cfg(target_os = "macos")]
             apfs_clone_metadata: traversal.deduplicate_apfs_clones && !traversal.apparent_size,
+            ..dua::TraversalOptions::default()
         },
         base_dir: None,
     };
@@ -1445,6 +1450,24 @@ mod tests {
             fs::read_to_string(&path).expect("default config"),
             dua::Config::default_file_content()
         );
+    }
+
+    #[test]
+    fn empty_flamegraphs_are_rejected_with_and_without_explicit_output() {
+        let dir = tempfile::tempdir().expect("temporary directory");
+        for output in [None, Some(dir.path().join("usage.svg"))] {
+            let error = write_flamegraph(
+                Vec::new(),
+                output,
+                &mut inferno::flamegraph::Options::default(),
+            )
+            .expect_err("empty stacks cannot be rendered");
+            assert_eq!(
+                error.to_string(),
+                "No disk usage to render as a flame graph"
+            );
+        }
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
     }
 
     #[test]

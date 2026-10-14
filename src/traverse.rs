@@ -2471,8 +2471,7 @@ mod tests {
                     metadata_options: crate::TraversalOptions {
                         skip_metadata: false,
                         apfs_clone_metadata: deduplicate,
-                        adaptive_threads: None,
-                        throughput_threads: None,
+                        ..crate::TraversalOptions::default()
                     },
                     base_dir: None,
                 },
