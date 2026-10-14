@@ -98,7 +98,7 @@ fn it_can_do_a_case_sensitive_glob_search() {
         Language::English,
     )
     .unwrap();
-    assert!(result_sensitive.is_empty());
+    assert_eq!(result_sensitive, Vec::<TreeIndex>::new());
 }
 
 #[test]
@@ -208,6 +208,7 @@ fn it_can_sort_directory_mtimes_by_recursive_entries() {
             ignore_dirs: BTreeSet::default(),
             ignore_patterns: None,
             metadata_options: dua::TraversalOptions::default(),
+            base_dir: None,
         },
         Vec::new(),
         None,

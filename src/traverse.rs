@@ -1895,6 +1895,7 @@ mod tests {
             ignore_dirs: std::collections::BTreeSet::new(),
             ignore_patterns: None,
             metadata_options: crate::TraversalOptions::default(),
+            base_dir: None,
         }
     }
 
@@ -2276,6 +2277,7 @@ mod tests {
                 ignore_dirs: std::collections::BTreeSet::default(),
                 ignore_patterns: None,
                 metadata_options: crate::TraversalOptions::default(),
+                base_dir: None,
             },
             vec![dir.path().to_owned()],
             None,
@@ -2330,6 +2332,7 @@ mod tests {
                 ignore_dirs: std::collections::BTreeSet::default(),
                 ignore_patterns: None,
                 metadata_options: crate::TraversalOptions::default(),
+                base_dir: None,
             },
             vec![dir.path().to_owned(), dir.path().to_owned()],
             None,
@@ -2370,6 +2373,7 @@ mod tests {
                     ignore_dirs: std::collections::BTreeSet::default(),
                     ignore_patterns: None,
                     metadata_options: crate::TraversalOptions::default(),
+                    base_dir: None,
                 },
                 vec![dir.path().to_owned()],
                 None,
@@ -2415,6 +2419,7 @@ mod tests {
                 ignore_dirs: std::collections::BTreeSet::default(),
                 ignore_patterns: None,
                 metadata_options: crate::TraversalOptions::default(),
+                base_dir: None,
             },
             vec![root_path.clone()],
             None,
@@ -2466,9 +2471,9 @@ mod tests {
                     metadata_options: crate::TraversalOptions {
                         skip_metadata: false,
                         apfs_clone_metadata: deduplicate,
-                        adaptive_threads: None,
                         ..crate::TraversalOptions::default()
                     },
+                    base_dir: None,
                 },
                 vec![path.to_owned()],
                 None,
@@ -2519,6 +2524,7 @@ mod tests {
                 ignore_dirs: std::collections::BTreeSet::default(),
                 ignore_patterns: None,
                 metadata_options: crate::TraversalOptions::default(),
+                base_dir: None,
             },
             vec![root.clone(), valid.clone()],
             None,

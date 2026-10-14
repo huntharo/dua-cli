@@ -712,6 +712,7 @@ mod tests {
                     ignore_dirs: std::collections::BTreeSet::default(),
                     ignore_patterns: None,
                     metadata_options: crate::TraversalOptions::default(),
+                    base_dir: None,
                 },
                 false,
                 sort_by_size_in_bytes,
@@ -790,6 +791,7 @@ mod tests {
                     ignore_dirs: std::collections::BTreeSet::default(),
                     ignore_patterns: None,
                     metadata_options: crate::TraversalOptions::default(),
+                    base_dir: None,
                 },
                 true,
                 false,
@@ -918,9 +920,9 @@ mod tests {
                     metadata_options: crate::TraversalOptions {
                         skip_metadata: false,
                         apfs_clone_metadata: true,
-                        adaptive_threads: None,
-                        ..dua_core::Options::default()
+                        ..crate::TraversalOptions::default()
                     },
+                    base_dir: None,
                 },
                 true,
                 true,
@@ -942,7 +944,6 @@ mod tests {
             dua_core::Options {
                 skip_metadata: false,
                 apfs_clone_metadata: true,
-                adaptive_threads: None,
                 ..dua_core::Options::default()
             },
         )
@@ -963,9 +964,9 @@ mod tests {
                 metadata_options: crate::TraversalOptions {
                     skip_metadata: false,
                     apfs_clone_metadata: true,
-                    adaptive_threads: None,
-                    ..dua_core::Options::default()
+                    ..crate::TraversalOptions::default()
                 },
+                base_dir: None,
             },
             true,
             true,
@@ -1067,6 +1068,7 @@ mod tests {
                 ignore_dirs: std::collections::BTreeSet::default(),
                 ignore_patterns: None,
                 metadata_options: crate::TraversalOptions::default(),
+                base_dir: None,
             },
             true,
             true,
@@ -1101,6 +1103,7 @@ mod tests {
                 ignore_dirs: std::collections::BTreeSet::default(),
                 ignore_patterns: None,
                 metadata_options: crate::TraversalOptions::default(),
+                base_dir: None,
             },
             false,
             true,
@@ -1139,6 +1142,7 @@ mod tests {
                     ignore_dirs: std::collections::BTreeSet::default(),
                     ignore_patterns: crate::IgnorePatterns::from_files(ignore_from).unwrap(),
                     metadata_options: crate::TraversalOptions::default(),
+                    base_dir: None,
                 },
                 false,
                 true,
