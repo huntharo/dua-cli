@@ -3,7 +3,7 @@
 use std::{
     ffi::OsString,
     io,
-    num::NonZeroU64,
+    num::{NonZeroU32, NonZeroU64},
     os::unix::ffi::OsStringExt,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -52,8 +52,9 @@ const FTS_FILE_ATTRIBUTES: libc::attrgroup_t = libc::ATTR_FILE_LINKCOUNT
     | libc::ATTR_FILE_DEVTYPE
     | libc::ATTR_FILE_DATALENGTH;
 const APFS_FILE_ATTRIBUTES: libc::attrgroup_t = libc::ATTR_FILE_DATAALLOCSIZE;
+// Keep ATTR_CMN_DEVID stat-compatible; FSOPT_RETURN_REALDEV would replace its value.
 const APFS_EXTENDED_ATTRIBUTES: libc::attrgroup_t =
-    libc::ATTR_CMNEXT_CLONEID | libc::ATTR_CMNEXT_EXT_FLAGS;
+    libc::ATTR_CMNEXT_REALDEVID | libc::ATTR_CMNEXT_CLONEID | libc::ATTR_CMNEXT_EXT_FLAGS;
 
 /// `getattrlistbulk(2)` requires each returned record to begin on an eight-byte boundary.
 #[repr(align(8))]
@@ -87,6 +88,7 @@ pub(super) struct RootCloneResponse {
     device: libc::dev_t,
     inode: u64,
     data_allocated: u64,
+    real_device: libc::dev_t,
     clone_id: u64,
     extended_flags: u64,
 }
@@ -145,6 +147,7 @@ pub(super) struct ParsedRecord {
     pub(super) file_length: Option<u64>,
     pub(super) file_allocated: Option<u64>,
     file_data_allocated: Option<u64>,
+    pub(super) real_device: Option<NonZeroU32>,
     clone_id: Option<NonZeroU64>,
     extended_flags: Option<u64>,
 }
@@ -336,6 +339,16 @@ pub(super) fn parse_record(
 
     if attribute_is_packed(
         returned.forkattr,
+        libc::ATTR_CMNEXT_REALDEVID,
+        pack_invalid && include_apfs,
+    ) {
+        let device = cursor.take_i32()?.cast_unsigned();
+        if returned.forkattr & libc::ATTR_CMNEXT_REALDEVID != 0 {
+            record.real_device = NonZeroU32::new(device);
+        }
+    }
+    if attribute_is_packed(
+        returned.forkattr,
         libc::ATTR_CMNEXT_CLONEID,
         pack_invalid && include_apfs,
     ) {
@@ -469,6 +482,29 @@ mod tests {
             FTS_FILE_ATTRIBUTES | APFS_FILE_ATTRIBUTES
         );
         assert_eq!(apfs_attributes.forkattr, APFS_EXTENDED_ATTRIBUTES);
+    }
+
+    #[test]
+    fn real_device_is_decoded_separately_from_the_logical_device() {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&44_u32.to_ne_bytes());
+        bytes.extend_from_slice(
+            &(libc::ATTR_CMN_RETURNED_ATTRS | libc::ATTR_CMN_DEVID).to_ne_bytes(),
+        );
+        bytes.extend_from_slice(&0_u32.to_ne_bytes()); // volume attributes
+        bytes.extend_from_slice(&0_u32.to_ne_bytes()); // directory attributes
+        bytes.extend_from_slice(&0_u32.to_ne_bytes()); // file attributes
+        bytes.extend_from_slice(&APFS_EXTENDED_ATTRIBUTES.to_ne_bytes());
+        bytes.extend_from_slice(&17_i32.to_ne_bytes()); // logical device
+        bytes.extend_from_slice(&29_i32.to_ne_bytes()); // real device
+        bytes.extend_from_slice(&31_u64.to_ne_bytes()); // clone ID
+        bytes.extend_from_slice(&1_u64.to_ne_bytes()); // extended flags
+
+        let record = parse_record(&bytes, false, true).unwrap();
+        assert_eq!(record.device, Some(17));
+        assert_eq!(record.real_device.map(NonZeroU32::get), Some(29));
+        assert_eq!(record.clone_id.map(NonZeroU64::get), Some(31));
+        assert_eq!(record.extended_flags, Some(1));
     }
 
     #[test]
